@@ -1726,20 +1726,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              {!isMobile && (
-                <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs font-semibold text-slate-700">Code Architecture</span>
-                  </div>
-                  <button
-                    onClick={() => navigateTo('codeviewer')}
-                    className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-0.5 cursor-pointer"
-                  >
-                    View Code <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Active Session Monitor Card */}
@@ -2984,16 +2970,7 @@ export default function App() {
             <ChevronRight className="w-4 h-4 text-slate-300" />
           </div>
 
-          <div
-            onClick={() => navigateTo('codeviewer')}
-            className="flex items-center justify-between p-4 hover:bg-slate-50 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <FileCode className="w-5 h-5 text-slate-700" />
-              <span className="text-sm font-bold text-slate-800">System Code Architecture</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-300" />
-          </div>
+
 
           <div
             onClick={() => navigateTo('profile')}
@@ -3490,17 +3467,7 @@ export default function App() {
                     <span className="flex items-center gap-3"><FileText className="w-4 h-4" /> Reports</span>
                   </button>
 
-                  <button
-                    onClick={() => navigateTo('codeviewer')}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-xs tracking-wider transition-all cursor-pointer ${
-                      currentScreen === 'codeviewer'
-                        ? 'bg-slate-800 text-white border border-slate-700'
-                        : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className="flex items-center gap-3"><FileCode className="w-4 h-4" /> Code Viewer</span>
-                    <span className="text-[8px] bg-slate-800 text-blue-400 font-bold border border-slate-700 px-1.5 py-0.5 rounded font-sans">DEV</span>
-                  </button>
+
                 </nav>
               </div>
 
