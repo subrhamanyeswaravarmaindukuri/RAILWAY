@@ -1320,6 +1320,7 @@ export default function App() {
 
             <button
               type="submit"
+              onClick={handleLogin}
               disabled={loginLoading}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center cursor-pointer"
             >
@@ -1344,7 +1345,21 @@ export default function App() {
           {/* Social Logins */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
-              onClick={() => { setUsername('sih-user'); setPassword('pass123'); triggerToast('Mock credential filled. Click Login.'); }}
+              onClick={() => {
+                setUsername('sih-user');
+                setPassword('pass123');
+                setLoginLoading(true);
+                setTimeout(() => {
+                  const now = new Date();
+                  setSessionLoginTime(now.toLocaleString());
+                  setSessionToken('jwt_sih1319_GOOGLE_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+                  setSessionIP('192.168.1.108');
+                  setLoginLoading(false);
+                  setIsAuthenticated(true);
+                  setCurrentScreen('dashboard');
+                  triggerToast('Successfully logged in with Google');
+                }, 1000);
+              }}
               className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-medium text-slate-600 transition-all cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -1356,7 +1371,21 @@ export default function App() {
               Google
             </button>
             <button
-              onClick={() => { setUsername('coal-admin'); setPassword('secure'); triggerToast('Mock credential filled. Click Login.'); }}
+              onClick={() => {
+                setUsername('coal-admin');
+                setPassword('secure');
+                setLoginLoading(true);
+                setTimeout(() => {
+                  const now = new Date();
+                  setSessionLoginTime(now.toLocaleString());
+                  setSessionToken('jwt_sih1319_MS_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+                  setSessionIP('10.227.28.56');
+                  setLoginLoading(false);
+                  setIsAuthenticated(true);
+                  setCurrentScreen('dashboard');
+                  triggerToast('Successfully logged in with Microsoft');
+                }, 1000);
+              }}
               className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-medium text-slate-600 transition-all cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 23 23">
