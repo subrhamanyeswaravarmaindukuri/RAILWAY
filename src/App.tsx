@@ -99,24 +99,246 @@ const railConnections: Record<string, string[]> = {
   'Chennai': ['Andhra']
 };
 
+const trackSegments: Record<string, [number, number][]> = {
+  'Punjab-Delhi': [
+    [30.9010, 75.8573], // Punjab
+    [30.3752, 76.7821], // Ambala
+    [29.6857, 76.9905], // Karnal
+    [29.3989, 76.9696], // Panipat
+    [28.9931, 77.0151], // Sonipat
+    [28.5139, 77.2890]  // Delhi
+  ],
+  'Delhi-Kanpur': [
+    [28.5139, 77.2890], // Delhi
+    [28.4089, 77.3178], // Faridabad
+    [28.1487, 77.3320], // Palwal
+    [27.4924, 77.6737], // Mathura
+    [27.1767, 78.0081], // Agra
+    [26.9840, 78.7842], // Etawah
+    [26.4499, 80.3319]  // Kanpur
+  ],
+  'Kanpur-Prayagraj': [
+    [26.4499, 80.3319], // Kanpur
+    [25.9262, 80.8093], // Fatehpur
+    [25.4358, 81.8463]  // Prayagraj
+  ],
+  'Prayagraj-DDU': [
+    [25.4358, 81.8463], // Prayagraj
+    [25.1373, 82.5644], // Mirzapur
+    [25.2818, 83.1166]  // DDU
+  ],
+  'DDU-Jharkhand': [
+    [25.2818, 83.1166], // DDU
+    [24.7955, 84.9994], // Gaya
+    [23.7957, 86.4304]  // Jharkhand
+  ],
+  'Jharkhand-WB': [
+    [23.7957, 86.4304], // Jharkhand
+    [23.5653, 87.2796], // Durgapur
+    [23.2324, 87.8630], // Bardhaman
+    [22.5830, 88.3429]  // WB
+  ],
+  'WB-Vijayawada': [
+    [22.5830, 88.3429], // WB
+    [21.5036, 86.9246], // Balasore
+    [20.4625, 85.8830], // Cuttack
+    [20.2724, 85.8438], // Bhubaneswar
+    [19.3150, 84.7941], // Brahmapur
+    [17.6896, 83.2185], // Visakhapatnam
+    [16.9891, 82.2475], // Kakinada
+    [16.5062, 80.6480]  // Vijayawada
+  ],
+  'Jharkhand-Vijayawada': [
+    [23.7957, 86.4304], // Jharkhand
+    [22.7987, 86.1866], // Jamshedpur
+    [21.4682, 84.0047], // Sambalpur
+    [20.9507, 85.2286], // Talcher
+    [17.6322, 83.1558], // Simhadri
+    [16.5062, 80.6480]  // Vijayawada
+  ],
+  'Delhi-Bhopal': [
+    [28.5139, 77.2890], // Delhi
+    [27.4924, 77.6737], // Mathura
+    [27.1767, 78.0081], // Agra
+    [26.2183, 78.1828], // Gwalior
+    [25.4484, 78.5685], // Jhansi
+    [24.0750, 78.2910], // Bina
+    [23.2599, 77.4126]  // Bhopal
+  ],
+  'Delhi-Gujarat': [
+    [28.5139, 77.2890], // Delhi
+    [28.2046, 76.8483], // Rewari
+    [27.5620, 76.6226], // Alwar
+    [26.9124, 75.7873], // Jaipur
+    [26.4498, 74.6399], // Ajmer
+    [25.0441, 73.7126], // Marwar
+    [24.5925, 72.7156], // Abu Road
+    [24.1724, 72.4251], // Palanpur
+    [23.5879, 72.3693]  // Gujarat
+  ],
+  'Gujarat-Bhusaval': [
+    [23.5879, 72.3693], // Gujarat (Mehsana)
+    [23.5050, 72.3810],
+    [23.4470, 72.3930],
+    [23.3610, 72.4130],
+    [23.2500, 72.4410],
+    [23.1818, 72.5020],
+    [23.0838, 72.5640],
+    [23.0670, 72.5830],
+    [23.0269, 72.6012], // Ahmedabad
+    [23.0016, 72.6050],
+    [22.9610, 72.6140],
+    [22.8980, 72.6380],
+    [22.8270, 72.7150],
+    [22.6860, 72.8200],
+    [22.6090, 72.9230],
+    [22.5564, 72.9350], // Anand
+    [22.4730, 72.9980],
+    [22.4430, 73.0180],
+    [22.3850, 73.0900],
+    [22.3520, 73.1200],
+    [22.3270, 73.1650],
+    [22.3106, 73.1812], // Vadodara
+    [22.2960, 73.1780],
+    [22.2810, 73.1690],
+    [22.1520, 73.1090],
+    [22.0160, 73.0680],
+    [21.8790, 73.0280],
+    [21.8020, 73.0130],
+    [21.7088, 72.9934],
+    [21.6280, 73.0180],
+    [21.4670, 72.9590],
+    [21.4020, 72.9320],
+    [21.3210, 72.8870],
+    [21.2049, 72.8406], // Surat
+    [21.1600, 72.8440],
+    [21.1480, 72.9620],
+    [21.1210, 73.1160],
+    [21.1090, 73.2320],
+    [21.1180, 73.3980],
+    [21.1550, 73.8050],
+    [21.7469, 74.1240],
+    [21.3290, 74.4780],
+    [21.0430, 75.0560],
+    [21.0110, 75.2670],
+    [21.0076, 75.5626],
+    [21.0310, 75.7000],
+    [21.0475, 75.7903]  // Bhusaval
+  ],
+  'Bhusaval-Bhopal': [
+    [21.0475, 75.7903], // Bhusaval
+    [21.6375, 76.3496], // Khandwa
+    [22.5024, 77.7212], // Itarsi
+    [23.2599, 77.4126]  // Bhopal
+  ],
+  'Bhopal-Katni': [
+    [23.2599, 77.4126], // Bhopal
+    [23.5255, 77.8211], // Vidisha
+    [23.8342, 78.4388], // Saugor
+    [23.8360, 79.4445], // Damoh
+    [23.9857, 80.3980]  // Katni
+  ],
+  'Prayagraj-Katni': [
+    [25.4358, 81.8463], // Prayagraj
+    [25.1764, 80.7937], // Manikpur
+    [24.5804, 80.8294], // Satna
+    [23.9857, 80.3980]  // Katni
+  ],
+  'DDU-MP': [
+    [25.2818, 83.1166], // DDU
+    [24.4764, 82.9905], // MP
+  ],
+  'MP-Katni': [
+    [24.4764, 82.9905], // MP
+    [24.1950, 81.7950], // Beohari
+    [23.9857, 80.3980]  // Katni
+  ],
+  'Katni-Wardha': [
+    [23.9857, 80.3980], // Katni
+    [23.1815, 79.9864], // Jabalpur
+    [22.7524, 77.7212], // Itarsi
+    [21.9015, 77.9004], // Betul
+    [21.1458, 79.0882], // Nagpur
+    [20.7408, 78.6022]  // Wardha
+  ],
+  'Bhusaval-Wardha': [
+    [21.0475, 75.7903], // Bhusaval
+    [21.0410, 75.8800],
+    [20.8870, 76.1980],
+    [20.7930, 76.6940],
+    [20.7096, 77.0027], // Akola
+    [20.8800, 77.7200], // Badnera
+    [20.7800, 78.1300],
+    [20.7270, 78.3180],
+    [20.7450, 78.5500],
+    [20.7408, 78.6022]  // Wardha
+  ],
+  'Wardha-Balharshah': [
+    [20.7408, 78.6022], // Wardha
+    [20.7000, 78.6800],
+    [20.5600, 78.8400],
+    [20.2300, 79.0000],
+    [19.9570, 79.2970],
+    [19.9000, 79.3250],
+    [19.8524, 79.3512]  // Balharshah
+  ],
+  'Balharshah-Telangana': [
+    [19.8524, 79.3512], // Balharshah
+    [19.7800, 79.3800],
+    [19.3300, 79.4800],
+    [18.8020, 79.4440],
+    [17.9780, 79.5200],
+    [17.9720, 79.5700],
+    [17.9689, 79.5941]  // Telangana
+  ],
+  'Telangana-Vijayawada': [
+    [17.9689, 79.5941], // Telangana
+    [17.9100, 79.6200],
+    [17.2470, 80.1380],
+    [16.5500, 80.6100],
+    [16.5062, 80.6480]  // Vijayawada
+  ],
+  'Vijayawada-Andhra': [
+    [16.5062, 80.6480], // Vijayawada
+    [16.4800, 80.6420],
+    [16.4400, 80.6350],
+    [16.2400, 80.6400], // Tenali
+    [15.9000, 80.4700],
+    [15.8200, 80.3500],
+    [15.5000, 80.0500],
+    [14.9120, 79.9920],
+    [14.4492, 79.9822], // Nellore
+    [14.3575, 79.9926],
+    [14.3458, 80.0460],
+    [14.3420, 80.0750],
+    [14.3351, 80.1065],
+    [14.3262, 80.1388]  // Nellore SDSTPS Siding
+  ],
+  'Andhra-Chennai': [
+    [14.3262, 80.1388], // Andhra (Nellore)
+    [13.8244, 79.9796], // Gudur
+    [13.4880, 80.0120], // Sullurupeta
+    [13.0827, 80.2707]  // Chennai
+  ]
+};
+
 const findRailRoute = (startId: string, endId: string): GeoStation[] => {
   if (startId === endId) {
     const node = railJunctions[startId];
-    return [{ name: node.name, coord: node.coord, desc: 'Source & Destination' }];
+    return [{ name: node.name, coord: node.coord, desc: 'Source & Destination', isMain: true }];
   }
 
   const queue: string[][] = [[startId]];
   const visited = new Set<string>([startId]);
+  let pathFound: string[] | null = null;
 
   while (queue.length > 0) {
     const path = queue.shift()!;
     const lastNode = path[path.length - 1];
 
     if (lastNode === endId) {
-      return path.map((id) => {
-        const node = railJunctions[id];
-        return { name: node.name, coord: node.coord, desc: 'Intermediate Hub' };
-      });
+      pathFound = path;
+      break;
     }
 
     const neighbors = railConnections[lastNode] || [];
@@ -128,11 +350,57 @@ const findRailRoute = (startId: string, endId: string): GeoStation[] => {
     }
   }
 
+  if (pathFound) {
+    const junctions: GeoStation[] = [];
+    
+    for (let i = 0; i < pathFound.length; i++) {
+      const currentId = pathFound[i];
+      const currentNode = railJunctions[currentId];
+      
+      junctions.push({
+        name: currentNode.name,
+        coord: currentNode.coord,
+        desc: i === 0 ? 'Source Station' : i === pathFound.length - 1 ? 'Destination Station' : 'Intermediate Hub',
+        isMain: true
+      });
+      
+      if (i < pathFound.length - 1) {
+        const nextId = pathFound[i + 1];
+        let segmentCoords = trackSegments[`${currentId}-${nextId}`];
+        let reverse = false;
+        
+        if (!segmentCoords) {
+          segmentCoords = trackSegments[`${nextId}-${currentId}`];
+          reverse = true;
+        }
+        
+        if (segmentCoords) {
+          let points = [...segmentCoords];
+          if (reverse) {
+            points.reverse();
+          }
+          
+          const intermediatePoints = points.slice(1, -1);
+          intermediatePoints.forEach((coord, ptIdx) => {
+            junctions.push({
+              name: `Track Bend ${i + 1}-${ptIdx + 1}`,
+              coord: coord,
+              desc: 'Physical track alignment',
+              isMain: false
+            });
+          });
+        }
+      }
+    }
+    
+    return junctions;
+  }
+
   const start = railJunctions[startId] || railJunctions['Punjab'];
   const end = railJunctions[endId] || railJunctions['Telangana'];
   return [
-    { name: start.name, coord: start.coord, desc: 'Start station' },
-    { name: end.name, coord: end.coord, desc: 'End station' }
+    { name: start.name, coord: start.coord, desc: 'Start station', isMain: true },
+    { name: end.name, coord: end.coord, desc: 'End station', isMain: true }
   ];
 };
 
