@@ -50,16 +50,35 @@ interface GeoRoute {
 
 const geoRoutes: Record<string, GeoRoute> = {
   'Mine A-Plant X': {
-    sourceName: 'Dhanbad Siding (JH)',
-    destName: 'NTPC Dadri (UP)',
+    sourceName: 'Mehsana Siding (GJ)',
+    destName: 'Nellore SDSTPS (AP)',
     junctions: [
-      { name: 'Dhanbad Coal Siding', coord: [23.7957, 86.4304], desc: 'Source: loading station' },
-      { name: 'Gaya Junction', coord: [24.7964, 85.0076], desc: 'Junction stop: crew change' },
-      { name: 'Pt. Deen Dayal Upadhyaya Jn', coord: [25.2818, 83.1235], desc: 'Intermediate: rake sorting' },
-      { name: 'Prayagraj Junction', coord: [25.4484, 81.8284], desc: 'Junction stop: yard control' },
-      { name: 'Kanpur Central', coord: [26.4542, 80.3503], desc: 'Intermediate: congestion check' },
-      { name: 'Tundla Junction', coord: [27.2052, 78.0207], desc: 'Junction stop: traffic clear' },
-      { name: 'NTPC Dadri Siding', coord: [28.5992, 77.5544], desc: 'Destination: unloading yard' }
+      { name: 'Mehsana Coal Siding', coord: [23.5879, 72.3693], desc: 'Source: Gujarat loading station' },
+      { name: 'Ahmedabad Junction', coord: [23.0269, 72.6012], desc: 'Junction stop: traffic clearance' },
+      { name: 'Vadodara Junction', coord: [22.3106, 73.1812], desc: 'Intermediate point' },
+      { name: 'Surat Junction', coord: [21.2049, 72.8406], desc: 'Junction stop: crew change' },
+      { name: 'Bhusaval Junction', coord: [21.0475, 75.7903], desc: 'Intermediate point' },
+      { name: 'Wardha Junction', coord: [20.7408, 78.6022], desc: 'Intermediate yard: speed control' },
+      { name: 'Balharshah Junction', coord: [19.8524, 79.3512], desc: 'Junction stop: border checkpoint' },
+      { name: 'Warangal Junction', coord: [17.9689, 79.5941], desc: 'Intermediate point' },
+      { name: 'Vijayawada Junction', coord: [16.5062, 80.6480], desc: 'Junction stop: crew change' },
+      { name: 'Nellore SDSTPS Siding', coord: [14.3312, 80.1415], desc: 'Destination: South AP unloading yard' }
+    ]
+  },
+  'Mehsana Siding (GJ)-Nellore SDSTPS (AP)': {
+    sourceName: 'Mehsana Siding (GJ)',
+    destName: 'Nellore SDSTPS (AP)',
+    junctions: [
+      { name: 'Mehsana Coal Siding', coord: [23.5879, 72.3693], desc: 'Source: Gujarat loading station' },
+      { name: 'Ahmedabad Junction', coord: [23.0269, 72.6012], desc: 'Junction stop: traffic clearance' },
+      { name: 'Vadodara Junction', coord: [22.3106, 73.1812], desc: 'Intermediate point' },
+      { name: 'Surat Junction', coord: [21.2049, 72.8406], desc: 'Junction stop: crew change' },
+      { name: 'Bhusaval Junction', coord: [21.0475, 75.7903], desc: 'Intermediate point' },
+      { name: 'Wardha Junction', coord: [20.7408, 78.6022], desc: 'Intermediate yard: speed control' },
+      { name: 'Balharshah Junction', coord: [19.8524, 79.3512], desc: 'Junction stop: border checkpoint' },
+      { name: 'Warangal Junction', coord: [17.9689, 79.5941], desc: 'Intermediate point' },
+      { name: 'Vijayawada Junction', coord: [16.5062, 80.6480], desc: 'Junction stop: crew change' },
+      { name: 'Nellore SDSTPS Siding', coord: [14.3312, 80.1415], desc: 'Destination: South AP unloading yard' }
     ]
   },
   'Mine A-Plant Y': {
@@ -165,7 +184,7 @@ const getRouteData = (source: string, destination: string): GeoRoute => {
   if (geoRoutes[key]) {
     return geoRoutes[key];
   }
-  return geoRoutes['Mine A-Plant X'];
+  return geoRoutes['Mehsana Siding (GJ)-Nellore SDSTPS (AP)'] || geoRoutes['Mine A-Plant X'];
 };
 
 const interpolateCoordinates = (coords: [number, number][], progress: number): [number, number] => {
@@ -219,6 +238,33 @@ export default function App() {
   const [isRealMobile, setIsRealMobile] = useState(false);
   const isMobile = isRealMobile;
 
+  // Geolocation state
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+
+  // Prompt for browser geolocation on login or load, and save in localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('railrake_user_location');
+    if (saved) {
+      try {
+        setUserLocation(JSON.parse(saved));
+      } catch (err) {
+        console.error("Failed to parse cached user location:", err);
+      }
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          setUserLocation(loc);
+          localStorage.setItem('railrake_user_location', JSON.stringify(loc));
+        },
+        (err) => {
+          console.warn("Geolocation access denied or timed out:", err);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
+
   // User input states
   const [allocationSuccess, setAllocationSuccess] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' } | null>(null);
@@ -237,6 +283,7 @@ export default function App() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const trainMarkerRef = useRef<L.Marker | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const completedPolylineRef = useRef<L.Polyline | null>(null);
   const stationMarkersRef = useRef<L.Marker[]>([]);
@@ -248,6 +295,7 @@ export default function App() {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         trainMarkerRef.current = null;
+        userMarkerRef.current = null;
         routePolylineRef.current = null;
         completedPolylineRef.current = null;
         stationMarkersRef.current = [];
@@ -349,11 +397,40 @@ export default function App() {
       .addTo(map);
     }
 
+    // Render user's current location if available
+    if (userLocation) {
+      const userIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: `<div class="relative flex items-center justify-center">
+                 <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-emerald-400 opacity-60"></span>
+                 <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-600 border-2 border-white shadow-lg"></span>
+                 <span class="absolute top-5 text-[8px] font-bold text-emerald-800 bg-white/90 border border-emerald-100 rounded px-1.5 py-0.5 whitespace-nowrap shadow-xs">You</span>
+               </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng(userLocation);
+      } else {
+        userMarkerRef.current = L.marker(userLocation, {
+          icon: userIcon
+        })
+        .bindPopup('<strong>Your Current Location</strong><br/>GPS tracking node')
+        .addTo(map);
+      }
+    } else {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+    }
+
     map.flyTo(trainPos, 6, {
       animate: true,
       duration: 1.2
     });
-  }, [currentScreen, selectedRakeId, rakes]);
+  }, [currentScreen, selectedRakeId, rakes, userLocation]);
 
   // Back navigation helper
   const navigateTo = (screen: string) => {

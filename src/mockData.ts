@@ -146,16 +146,16 @@ export const initialRakes: Rake[] = [
   {
     id: 'R1024',
     status: 'IN TRANSIT',
-    source: 'Mine A',
-    destination: 'Plant X',
+    source: 'Mehsana Siding (GJ)',
+    destination: 'Nellore SDSTPS (AP)',
     coalAmount: 4000,
     grade: 'G10',
-    currentLocation: 'Station 47',
+    currentLocation: 'Wardha Jn',
     eta: '13 Aug, 06:45 PM',
-    distanceLeft: 120,
+    distanceLeft: 640,
     expectedDelay: '2h 15m',
-    routeProgress: 70,
-    routeStations: ['Mine A', 'Station 20', 'Station 47', 'Plant X']
+    routeProgress: 55,
+    routeStations: ['Mehsana Siding', 'Ahmedabad Jn', 'Vadodara Jn', 'Surat Jn', 'Bhusaval Jn', 'Wardha Jn', 'Balharshah Jn', 'Warangal Jn', 'Vijayawada Jn', 'Nellore SDSTPS']
   },
   {
     id: 'R4582',
