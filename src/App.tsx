@@ -48,6 +48,93 @@ interface GeoRoute {
   junctions: GeoStation[];
 }
 
+interface RailNode {
+  id: string;
+  name: string;
+  coord: [number, number];
+}
+
+const railJunctions: Record<string, RailNode> = {
+  'Punjab': { id: 'Punjab', name: 'Ludhiana Jn (PB)', coord: [30.9010, 75.8573] },
+  'Delhi': { id: 'Delhi', name: 'New Delhi (DL)', coord: [28.6139, 77.2090] },
+  'Gujarat': { id: 'Gujarat', name: 'Vadodara Jn (GJ)', coord: [22.3106, 73.1812] },
+  'Jharkhand': { id: 'Jharkhand', name: 'Dhanbad Jn (JH)', coord: [23.7957, 86.4304] },
+  'WB': { id: 'WB', name: 'Howrah Jn (WB)', coord: [22.5850, 88.3386] },
+  'MP': { id: 'MP', name: 'Singrauli (MP)', coord: [24.1039, 82.6842] },
+  'Telangana': { id: 'Telangana', name: 'Secunderabad Jn (TS)', coord: [17.4334, 78.5015] },
+  'Andhra': { id: 'Andhra', name: 'Nellore (AP)', coord: [14.4492, 79.9822] },
+  'Chennai': { id: 'Chennai', name: 'Chennai Central (TN)', coord: [13.0827, 80.2707] },
+  
+  // Intermediate routing hubs
+  'Kanpur': { id: 'Kanpur', name: 'Kanpur Central (UP)', coord: [26.4542, 80.3503] },
+  'Prayagraj': { id: 'Prayagraj', name: 'Prayagraj Jn (UP)', coord: [25.4484, 81.8284] },
+  'DDU': { id: 'DDU', name: 'Pt. Deen Dayal Upadhyaya Jn (UP)', coord: [25.2818, 83.1235] },
+  'Katni': { id: 'Katni', name: 'Katni Jn (MP)', coord: [23.8344, 80.4005] },
+  'Bhopal': { id: 'Bhopal', name: 'Bhopal Jn (MP)', coord: [23.2599, 77.4126] },
+  'Bhusaval': { id: 'Bhusaval', name: 'Bhusaval Jn (MH)', coord: [21.0475, 75.7903] },
+  'Wardha': { id: 'Wardha', name: 'Wardha Jn (MH)', coord: [20.7408, 78.6022] },
+  'Balharshah': { id: 'Balharshah', name: 'Balharshah Jn (MH)', coord: [19.8524, 79.3512] },
+  'Vijayawada': { id: 'Vijayawada', name: 'Vijayawada Jn (AP)', coord: [16.5062, 80.6480] }
+};
+
+const railConnections: Record<string, string[]> = {
+  'Punjab': ['Delhi'],
+  'Delhi': ['Punjab', 'Kanpur', 'Bhopal', 'Gujarat'],
+  'Gujarat': ['Delhi', 'Bhusaval'],
+  'Bhusaval': ['Gujarat', 'Bhopal', 'Wardha'],
+  'Bhopal': ['Delhi', 'Bhusaval', 'Katni'],
+  'Kanpur': ['Delhi', 'Prayagraj'],
+  'Prayagraj': ['Kanpur', 'DDU', 'Katni'],
+  'DDU': ['Prayagraj', 'Jharkhand', 'MP'],
+  'Jharkhand': ['DDU', 'WB', 'Vijayawada'],
+  'WB': ['Jharkhand', 'Vijayawada'],
+  'MP': ['DDU', 'Katni'],
+  'Katni': ['Bhopal', 'Prayagraj', 'MP', 'Wardha'],
+  'Wardha': ['Bhusaval', 'Katni', 'Balharshah'],
+  'Balharshah': ['Wardha', 'Telangana'],
+  'Telangana': ['Balharshah', 'Vijayawada'],
+  'Vijayawada': ['Telangana', 'Jharkhand', 'WB', 'Andhra'],
+  'Andhra': ['Vijayawada', 'Chennai'],
+  'Chennai': ['Andhra']
+};
+
+const findRailRoute = (startId: string, endId: string): GeoStation[] => {
+  if (startId === endId) {
+    const node = railJunctions[startId];
+    return [{ name: node.name, coord: node.coord, desc: 'Source & Destination' }];
+  }
+
+  const queue: string[][] = [[startId]];
+  const visited = new Set<string>([startId]);
+
+  while (queue.length > 0) {
+    const path = queue.shift()!;
+    const lastNode = path[path.length - 1];
+
+    if (lastNode === endId) {
+      return path.map((id) => {
+        const node = railJunctions[id];
+        return { name: node.name, coord: node.coord, desc: 'Intermediate Hub' };
+      });
+    }
+
+    const neighbors = railConnections[lastNode] || [];
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push([...path, neighbor]);
+      }
+    }
+  }
+
+  const start = railJunctions[startId] || railJunctions['Punjab'];
+  const end = railJunctions[endId] || railJunctions['Telangana'];
+  return [
+    { name: start.name, coord: start.coord, desc: 'Start station' },
+    { name: end.name, coord: end.coord, desc: 'End station' }
+  ];
+};
+
 const geoRoutes: Record<string, GeoRoute> = {
   'Mine A-Plant X': {
     sourceName: 'Mehsana Siding (GJ)',
@@ -234,6 +321,11 @@ export default function App() {
   const [selectedLanguage, setSelectedLanguage] = useState<'sql' | 'c' | 'cpp' | 'java'>('java');
   const [sidingHistoryOpen, setSidingHistoryOpen] = useState(false);
 
+  // Custom Dynamic Route Pathfinder States
+  const [customRouteFrom, setCustomRouteFrom] = useState<string>('Punjab');
+  const [customRouteTo, setCustomRouteTo] = useState<string>('Telangana');
+  const [useCustomRoute, setUseCustomRoute] = useState<boolean>(false);
+
   // Layout preview states
   const [isRealMobile, setIsRealMobile] = useState(false);
   const isMobile = isRealMobile;
@@ -356,9 +448,25 @@ export default function App() {
     }
 
     const active = rakes.find((r) => r.id === selectedRakeId) || rakes[0];
-    const route = getRouteData(active.source, active.destination);
+    let route: GeoRoute;
+    let progress = active.routeProgress;
+    let status = active.status;
+
+    if (useCustomRoute) {
+      const customStations = findRailRoute(customRouteFrom, customRouteTo);
+      route = {
+        sourceName: railJunctions[customRouteFrom]?.name || customRouteFrom,
+        destName: railJunctions[customRouteTo]?.name || customRouteTo,
+        junctions: customStations
+      };
+      progress = 50; // Pin custom train at 50% progress
+      status = 'IN TRANSIT';
+    } else {
+      route = getRouteData(active.source, active.destination);
+    }
+
     const coords = route.junctions.map((j) => j.coord);
-    const trainPos = interpolateCoordinates(coords, active.routeProgress);
+    const trainPos = interpolateCoordinates(coords, progress);
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
@@ -416,14 +524,14 @@ export default function App() {
       }).addTo(map);
     }
 
-    const completedCoords = coords.slice(0, Math.floor((active.routeProgress / 100) * coords.length) + 1);
+    const completedCoords = coords.slice(0, Math.floor((progress / 100) * coords.length) + 1);
     completedCoords.push(trainPos);
 
     if (completedPolylineRef.current) {
       completedPolylineRef.current.setLatLngs(completedCoords);
     } else {
       completedPolylineRef.current = L.polyline(completedCoords, {
-        color: active.status === 'DELAYED' ? '#f43f5e' : '#2563eb',
+        color: status === 'DELAYED' ? '#f43f5e' : '#2563eb',
         weight: 4,
         opacity: 0.9
       }).addTo(map);
@@ -445,7 +553,7 @@ export default function App() {
       trainMarkerRef.current = L.marker(trainPos, {
         icon: pulsingIcon
       })
-      .bindPopup(`<strong>Rake ${active.id}</strong><br/>Speed: 52 km/h<br/>Status: ${active.status}`)
+      .bindPopup(`<strong>Train Position</strong><br/>Speed: 52 km/h<br/>Status: ${status}`)
       .addTo(map);
     }
 
@@ -483,7 +591,7 @@ export default function App() {
       animate: true,
       duration: 1.2
     });
-  }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress]);
+  }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress, useCustomRoute, customRouteFrom, customRouteTo]);
 
   // Back navigation helper
   const navigateTo = (screen: string) => {
@@ -1014,7 +1122,10 @@ export default function App() {
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Rake:</span>
               <select
                 value={selectedRakeId}
-                onChange={(e) => setSelectedRakeId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedRakeId(e.target.value);
+                  setUseCustomRoute(false);
+                }}
                 className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 focus:outline-none"
               >
                 {rakes.map((r) => (
@@ -1038,6 +1149,55 @@ export default function App() {
                 ? `📍 ${userAddress || 'Locating Address...'}` 
                 : '📍 Use Current Location'}
             </button>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">From:</span>
+              <select
+                value={useCustomRoute ? customRouteFrom : ''}
+                onChange={(e) => {
+                  setCustomRouteFrom(e.target.value);
+                  setUseCustomRoute(true);
+                }}
+                className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value="" disabled hidden>Select Start</option>
+                {Object.keys(railJunctions).filter(k => !['Kanpur', 'Prayagraj', 'DDU', 'Katni', 'Bhopal', 'Bhusaval', 'Wardha', 'Balharshah', 'Vijayawada'].includes(k)).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">To:</span>
+              <select
+                value={useCustomRoute ? customRouteTo : ''}
+                onChange={(e) => {
+                  setCustomRouteTo(e.target.value);
+                  setUseCustomRoute(true);
+                }}
+                className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+              >
+                <option value="" disabled hidden>Select End</option>
+                {Object.keys(railJunctions).filter(k => !['Kanpur', 'Prayagraj', 'DDU', 'Katni', 'Bhopal', 'Bhusaval', 'Wardha', 'Balharshah', 'Vijayawada'].includes(k)).map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {useCustomRoute && (
+              <button
+                onClick={() => setUseCustomRoute(false)}
+                className="text-xs text-rose-600 hover:text-rose-700 font-bold underline cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-xs">
@@ -1095,8 +1255,11 @@ export default function App() {
                 <span className="text-slate-500 font-medium">Position:</span>
                 <strong className="text-slate-800 font-bold font-mono">
                   {interpolateCoordinates(
-                    getRouteData(activeRake.source, activeRake.destination).junctions.map((j) => j.coord),
-                    activeRake.routeProgress
+                    (useCustomRoute 
+                      ? findRailRoute(customRouteFrom, customRouteTo)
+                      : getRouteData(activeRake.source, activeRake.destination).junctions
+                    ).map((j) => j.coord),
+                    useCustomRoute ? 50 : activeRake.routeProgress
                   )[0].toFixed(4)}° N
                 </strong>
               </div>
@@ -1104,8 +1267,11 @@ export default function App() {
                 <span className="text-slate-500 font-medium"></span>
                 <strong className="text-slate-800 font-bold font-mono">
                   {interpolateCoordinates(
-                    getRouteData(activeRake.source, activeRake.destination).junctions.map((j) => j.coord),
-                    activeRake.routeProgress
+                    (useCustomRoute 
+                      ? findRailRoute(customRouteFrom, customRouteTo)
+                      : getRouteData(activeRake.source, activeRake.destination).junctions
+                    ).map((j) => j.coord),
+                    useCustomRoute ? 50 : activeRake.routeProgress
                   )[1].toFixed(4)}° E
                 </strong>
               </div>
@@ -1124,11 +1290,15 @@ export default function App() {
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
             <h4 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Route Siding Milestones</h4>
             <div className="flex flex-col gap-2">
-              {getRouteData(activeRake.source, activeRake.destination).junctions.map((j, index, arr) => {
+              {(useCustomRoute 
+                ? findRailRoute(customRouteFrom, customRouteTo)
+                : getRouteData(activeRake.source, activeRake.destination).junctions
+              ).map((j, index, arr) => {
                 const totalStations = arr.length;
                 const progressPercentage = (index / (totalStations - 1)) * 100;
-                const visited = activeRake.routeProgress >= progressPercentage;
-                const active = Math.abs(activeRake.routeProgress - progressPercentage) < (100 / (totalStations - 1)) * 0.5;
+                const activeProgress = useCustomRoute ? 50 : activeRake.routeProgress;
+                const visited = activeProgress >= progressPercentage;
+                const active = Math.abs(activeProgress - progressPercentage) < (100 / (totalStations - 1)) * 0.5;
 
                 return (
                   <div key={index} className="flex items-center justify-between text-xs border-b border-slate-200/50 pb-2 last:border-0 last:pb-0">
