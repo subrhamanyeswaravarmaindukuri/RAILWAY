@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Plus,
   Download,
-  Cpu,
   FileCode,
   ArrowLeft,
   CheckCircle2,
@@ -757,6 +756,11 @@ export default function App() {
     'coal-admin': 'DLH915',
     'admin': 'CRIS99'
   });
+  // Inventory Forecast Screen States
+  const [forecastTimeframe, setForecastTimeframe] = useState<'7' | '15' | '30'>('15');
+  const [isRefreshingModel, setIsRefreshingModel] = useState(false);
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
+  const [showDetailedInsightsModal, setShowDetailedInsightsModal] = useState(false);
   
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
@@ -2172,167 +2176,559 @@ export default function App() {
       activeForecast.in7Days,
       activeForecast.in15Days
     ];
-    const labels = ['Current', '1 Day', '3 Days', '7 Days', '15 Days'];
-    const maxVal = Math.max(...forecastVals, 50000);
+    const maxVal = Math.max(...forecastVals, 55000);
+
+    // Dynamic metrics based on active forecast
+    const currentStock = activeForecast.currentStock;
+    const dailyConsumption = activeForecast.dailyConsumption;
+    const daysOfStockLeft = (currentStock / dailyConsumption).toFixed(1);
+    const criticalDay = activeForecast.criticalDay;
+    const recommendedRakes = activeForecast.recommendedRakes;
+
+    // Helper variables to simulate 7, 15, and 30 days depletion
+    const getDepletionValues = () => {
+      if (forecastTimeframe === '7') {
+        return [
+          currentStock,
+          activeForecast.tomorrow,
+          activeForecast.in3Days,
+          Math.max(Math.round((activeForecast.in3Days + activeForecast.in7Days) / 2), 2000),
+          activeForecast.in7Days
+        ];
+      } else if (forecastTimeframe === '15') {
+        return [
+          currentStock,
+          activeForecast.tomorrow,
+          activeForecast.in3Days,
+          activeForecast.in7Days,
+          Math.max(Math.round((activeForecast.in7Days + activeForecast.in15Days) / 2), 1500),
+          Math.max(activeForecast.in15Days, 500)
+        ];
+      } else {
+        return [
+          currentStock,
+          activeForecast.in3Days,
+          activeForecast.in7Days,
+          Math.max(activeForecast.in15Days, 500),
+          Math.max(Math.round(activeForecast.in15Days - 5 * dailyConsumption), 400),
+          Math.max(Math.round(activeForecast.in15Days - 12 * dailyConsumption), 250)
+        ];
+      }
+    };
+
+    const getDepletionLabels = () => {
+      if (forecastTimeframe === '7') {
+        return ['Current', '1 Day', '3 Days', '5 Days', '7 Days'];
+      } else if (forecastTimeframe === '15') {
+        return ['Current', '1 Day', '3 Days', '7 Days', '10 Days', '15 Days'];
+      } else {
+        return ['Current', '3 Days', '7 Days', '15 Days', '20 Days', '30 Days'];
+      }
+    };
+
+    const activeDepValues = getDepletionValues();
+    const activeDepLabels = getDepletionLabels();
+    const forecastAtTimeframeValue = activeDepValues[activeDepValues.length - 1];
+    const pctOfCritical = ((forecastAtTimeframeValue / 10000) * 100).toFixed(1);
+
+    // Refresh forecasting engine handler
+    const handleRefreshModel = () => {
+      setIsRefreshingModel(true);
+      setTimeout(() => {
+        setIsRefreshingModel(false);
+        triggerToast('AI forecasting engine updated using C-optimization parameters.');
+      }, 1000);
+    };
+
+    // Dispatch target rakes helper
+    const handleDispatchNow = () => {
+      triggerToast(`Redirecting to Rake Allocation with target ${activeForecast.destination}`);
+      navigateTo('allocation');
+    };
 
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <button onClick={navigateBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 cursor-pointer">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900 font-display">Demand Forecast</h2>
-            <p className="text-sm text-slate-500">AI prediction of coal deplete curves and scheduling requirements</p>
+      <div className="space-y-6 text-left">
+        {/* Header Block */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 border border-slate-100 rounded-2xl shadow-xs">
+          <div className="flex items-center gap-3">
+            <button onClick={navigateBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 cursor-pointer">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 font-display">Inventory Forecast</h2>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">AI-Powered Demand & Stock Planning</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Siding Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Destination</span>
+              <select
+                value={selectedDestination}
+                onChange={(e) => setSelectedDestination(e.target.value)}
+                className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
+              >
+                {initialForecasts.map((f) => (
+                  <option key={f.destination} value={f.destination}>
+                    {f.destination}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Model Selector Card */}
+            <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] md:text-xs">
+              <div className="text-left leading-tight">
+                <span className="text-slate-400 font-bold block uppercase text-[9px] tracking-wider">Forecast Model</span>
+                <span className="text-blue-600 font-bold flex items-center gap-1 mt-0.5">
+                  ⚙️ Exponential Decay Model (C Engine)
+                </span>
+              </div>
+              <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+              <div className="text-left leading-tight hidden md:block">
+                <span className="text-slate-400 font-bold block uppercase text-[9px] tracking-wider">Last Updated</span>
+                <span className="text-slate-600 font-semibold block mt-0.5">Today, 09:30 AM</span>
+              </div>
+              <button
+                onClick={handleRefreshModel}
+                className="p-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-all cursor-pointer animate-none"
+                title="Refresh Model Data"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingModel ? 'animate-spin text-blue-600' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Siding Selector */}
-        <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Destination:</span>
-            <select
-              value={selectedDestination}
-              onChange={(e) => setSelectedDestination(e.target.value)}
-              className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 focus:outline-none"
-            >
-              {initialForecasts.map((f) => (
-                <option key={f.destination} value={f.destination}>
-                  {f.destination}
-                </option>
-              ))}
-            </select>
+        {/* Top 4 Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* Card 1: Current Stock */}
+          <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Current Stock</span>
+              <span className="text-2xl font-extrabold text-slate-800 mt-1.5 block font-display">
+                {currentStock.toLocaleString()} MT
+              </span>
+              <span className="text-[10px] text-green-600 font-bold block mt-1">↗ 2.5% vs yesterday</span>
+            </div>
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0">
+              🗄️
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase">Predicted By</span>
-            <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
-              <Cpu className="w-3.5 h-3.5" /> Exponential Decay Model (C Engine)
-            </span>
+
+          {/* Card 2: Daily Burn Rate */}
+          <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Daily Burn Rate</span>
+              <span className="text-2xl font-extrabold text-slate-800 mt-1.5 block font-display">
+                {dailyConsumption.toLocaleString()} MT
+              </span>
+              <span className="text-[10px] text-slate-400 font-bold block mt-1">— No change</span>
+            </div>
+            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0">
+              🔥
+            </div>
+          </div>
+
+          {/* Card 3: Days of Stock Left */}
+          <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">Days of Stock Left</span>
+              <span className="text-2xl font-extrabold text-rose-600 mt-1.5 block font-display">
+                {daysOfStockLeft} Days
+              </span>
+              <span className="text-[10px] text-rose-500 font-bold block mt-1">⚠️ Below recommended</span>
+            </div>
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0">
+              📅
+            </div>
+          </div>
+
+          {/* Card 4: Forecast at X Days */}
+          <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block">
+                Forecast at {forecastTimeframe} Days
+              </span>
+              <span className="text-2xl font-extrabold text-slate-800 mt-1.5 block font-display">
+                {forecastAtTimeframeValue.toLocaleString()} MT
+              </span>
+              <span className="text-[10px] text-purple-600 font-bold block mt-1">
+                {pctOfCritical}% of critical level
+              </span>
+            </div>
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0">
+              📉
+            </div>
           </div>
         </div>
 
-        {/* Stock status grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-5 bg-white border border-slate-100 rounded-xl shadow-xs">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Current Stock</span>
-            <span className="text-2xl font-bold text-slate-800 mt-1 block">{activeForecast.currentStock.toLocaleString()} MT</span>
-          </div>
-          <div className="p-5 bg-white border border-slate-100 rounded-xl shadow-xs">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Daily Burn Rate</span>
-            <span className="text-2xl font-bold text-slate-800 mt-1 block">{activeForecast.dailyConsumption.toLocaleString()} MT</span>
-          </div>
-        </div>
+        {/* Middle Section: Line Chart & AI Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Inventory Depletion & Demand Forecast Chart */}
+          <div className="lg:col-span-2 p-6 bg-white border border-slate-100 rounded-2xl shadow-xs space-y-5 flex flex-col justify-between min-h-[380px] relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">
+                  Inventory Depletion & Demand Forecast
+                </h3>
+                <span className="text-slate-400 hover:text-slate-600 cursor-pointer text-xs" title="Forecasted inventory depletion curve over days">ℹ️</span>
+              </div>
 
-        {/* Depletion Curve Graphic (SVG-based line graph) */}
-        <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2 font-display">Inventory Depletion Forecast Curve</h3>
-          
-          <div className="relative pt-6 pb-2 px-4 bg-slate-50/50 rounded-xl">
-            {/* Chart SVG */}
-            <svg className="w-full h-48" viewBox="0 0 500 200" preserveAspectRatio="none">
-              {/* Grid Lines */}
-              <line x1="0" y1="40" x2="500" y2="40" stroke="#f1f5f9" strokeWidth="1" />
-              <line x1="0" y1="100" x2="500" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-              <line x1="0" y1="160" x2="500" y2="160" stroke="#f1f5f9" strokeWidth="1" />
-              {/* Critical threshold line */}
-              <line x1="0" y1="140" x2="500" y2="140" stroke="#fda4af" strokeWidth="1" strokeDasharray="4 4" />
-              <text x="10" y="135" fill="#f43f5e" className="text-[8px] font-bold">Critical Threshold (10k MT)</text>
+              {/* Timeframe buttons */}
+              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200/60 shrink-0">
+                {(['7', '15', '30'] as const).map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => setForecastTimeframe(days)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      forecastTimeframe === days
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {days} Days
+                  </button>
+                ))}
+              </div>
+            </div>
 
-              {/* Draw Plot Line */}
-              {(() => {
-                const points = forecastVals.map((val, idx) => {
-                  const x = (idx / 4) * 500;
-                  // Map val range [0, maxVal] to y-axis range [180, 20]
-                  const y = 180 - (Math.max(val, 0) / maxVal) * 160;
-                  return `${x},${y}`;
-                });
-                return (
-                  <>
+            {/* Legends */}
+            <div className="flex flex-wrap items-center gap-4 text-[10px] font-semibold text-slate-500 mt-1">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-1 bg-blue-600 rounded"></span>
+                <span>Inventory Forecast</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-0.5 border-t-2 border-dashed border-rose-500"></span>
+                <span>Critical Threshold (10,000 MT)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3.5 h-0.5 border-t-2 border-dashed border-emerald-500"></span>
+                <span>Optimized Delivery Line</span>
+              </div>
+            </div>
+
+            {/* SVG Interactive Depletion Curve */}
+            <div className="relative pt-4 pb-2 px-6 bg-slate-50/50 rounded-xl flex-1 flex flex-col justify-center">
+              <svg className="w-full h-44" viewBox="0 0 500 200" preserveAspectRatio="none">
+                {/* Horizontal Grid Lines */}
+                <line x1="0" y1="20" x2="500" y2="20" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                <line x1="0" y1="56" x2="500" y2="56" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                <line x1="0" y1="92" x2="500" y2="92" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                <line x1="0" y1="128" x2="500" y2="128" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+                <line x1="0" y1="164" x2="500" y2="164" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2 2" />
+
+                {/* Critical Threshold Dotted Line (10,000 MT) */}
+                {(() => {
+                  const yThresh = 164 - (10000 / maxVal) * 144;
+                  return (
+                    <line
+                      x1="0"
+                      y1={yThresh}
+                      x2="500"
+                      y2={yThresh}
+                      stroke="#f43f5e"
+                      strokeWidth="1.5"
+                      strokeDasharray="4 4"
+                    />
+                  );
+                })()}
+
+                {/* Optimized Delivery Curve */}
+                {(() => {
+                  const points = activeDepValues.map((val, idx) => {
+                    const x = (idx / (activeDepValues.length - 1)) * 500;
+                    // Optimized delivery curve keeps stock higher
+                    const optVal = Math.max(val + (idx >= 3 ? 35000 : 0), 10000);
+                    const y = 164 - (optVal / maxVal) * 144;
+                    return `${x},${y}`;
+                  });
+                  return (
+                    <polyline
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
+                      points={points.join(' ')}
+                    />
+                  );
+                })()}
+
+                {/* Real Depletion Plot Line */}
+                {(() => {
+                  const points = activeDepValues.map((val, idx) => {
+                    const x = (idx / (activeDepValues.length - 1)) * 500;
+                    const y = 164 - (val / maxVal) * 144;
+                    return `${x},${y}`;
+                  });
+                  return (
                     <polyline
                       fill="none"
                       stroke="#2563eb"
                       strokeWidth="3"
                       points={points.join(' ')}
-                      className="transition-all duration-300"
                     />
-                    {/* Dots */}
-                    {forecastVals.map((val, idx) => {
-                      const x = (idx / 4) * 500;
-                      const y = 180 - (Math.max(val, 0) / maxVal) * 160;
-                      return (
-                        <circle
-                          key={idx}
-                          cx={x}
-                          cy={y}
-                          r="5"
-                          className="fill-white stroke-blue-600 stroke-2 cursor-pointer hover:r-7 transition-all"
-                        />
-                      );
-                    })}
-                  </>
-                );
-              })()}
-            </svg>
+                  );
+                })()}
 
-            {/* X-Axis labels */}
-            <div className="flex justify-between mt-3 px-2 text-[10px] font-semibold text-slate-400">
-              {labels.map((l, i) => (
-                <span key={i}>{l}</span>
-              ))}
+                {/* Interactive Dot Markers */}
+                {activeDepValues.map((val, idx) => {
+                  const x = (idx / (activeDepValues.length - 1)) * 500;
+                  const y = 164 - (val / maxVal) * 144;
+                  return (
+                    <circle
+                      key={idx}
+                      cx={x}
+                      cy={y}
+                      r={hoveredPointIndex === idx ? 7 : 5}
+                      className="fill-white stroke-blue-600 stroke-2 cursor-pointer hover:r-7 transition-all"
+                      onMouseEnter={() => setHoveredPointIndex(idx)}
+                      onMouseLeave={() => setHoveredPointIndex(null)}
+                    />
+                  );
+                })}
+              </svg>
+
+              {/* X-Axis labels */}
+              <div className="flex justify-between mt-3 px-2 text-[10px] font-bold text-slate-400">
+                {activeDepLabels.map((l, i) => (
+                  <span key={i}>{l}</span>
+                ))}
+              </div>
+
+              {/* Hover Tooltip Overlay Box */}
+              {hoveredPointIndex !== null && (
+                <div
+                  className="absolute bg-white/95 border border-slate-200/80 rounded-xl p-3 shadow-lg text-[10px] leading-relaxed text-slate-700 min-w-[130px] z-50 pointer-events-none animate-fade-in"
+                  style={{
+                    left: `${Math.min(Math.max((hoveredPointIndex / (activeDepValues.length - 1)) * 90, 5), 70)}%`,
+                    bottom: '60px'
+                  }}
+                >
+                  <span className="font-extrabold text-slate-800 block border-b border-slate-100 pb-1 mb-1.5 uppercase tracking-wider">
+                    {activeDepLabels[hoveredPointIndex]} Forecast
+                  </span>
+                  <div className="flex justify-between font-medium">
+                    <span>Predicted Stock:</span>
+                    <span className="font-bold text-slate-800">{activeDepValues[hoveredPointIndex].toLocaleString()} MT</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Confidence:</span>
+                    <span className="font-bold text-blue-600">92%</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Daily Burn:</span>
+                    <span className="font-bold text-slate-800">{dailyConsumption.toLocaleString()} MT</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Rec. Delivery:</span>
+                    <span className="font-bold text-slate-800">35,000 MT</span>
+                  </div>
+                  <div className="flex justify-between font-medium pt-0.5 mt-0.5 border-t border-slate-100">
+                    <span>Optimal Delivery:</span>
+                    <span className="font-bold text-green-600">Tomorrow</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className={`grid gap-3 pt-2 ${isMobile ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'}`}>
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <span className="text-[10px] text-slate-400 font-bold block">TOMORROW</span>
-              <span className="text-sm font-bold text-slate-700 mt-1 block">{Math.max(activeForecast.tomorrow, 0).toLocaleString()} MT</span>
+          {/* AI Insights Card */}
+          <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 font-display flex items-center gap-1.5">
+                <span>✨ AI Insights</span>
+              </h3>
+
+              <div className="space-y-4">
+                {/* Item 1 */}
+                <div className="p-3.5 bg-purple-50/50 border border-purple-100 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-extrabold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Critical Stock in {criticalDay} Days
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-semibold text-left">
+                    Coal stockpile is forecast to drop below safety reserves of 10,000 MT in {criticalDay} days.
+                  </p>
+                </div>
+
+                {/* Item 2 */}
+                <div className="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Recommended Action
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-semibold text-left">
+                    Initiate scheduling sequence for 35,000 MT (approx. 6 rakes) to reach siding tomorrow.
+                  </p>
+                </div>
+
+                {/* Item 3 */}
+                <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      Demand Trend
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-semibold text-left">
+                    Daily consumption remains steady with a variability factor of ±1.2%. No sudden fluctuations expected.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <span className="text-[10px] text-slate-400 font-bold block">IN 3 DAYS</span>
-              <span className={`text-sm font-bold mt-1 block ${activeForecast.in3Days < 10000 ? 'text-rose-600' : 'text-slate-700'}`}>
-                {Math.max(activeForecast.in3Days, 0).toLocaleString()} MT
-              </span>
+
+            <button
+              onClick={() => setShowDetailedInsightsModal(true)}
+              className="w-full mt-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-blue-600 font-semibold text-xs rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer font-bold"
+            >
+              View Detailed Insights →
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Section: Demand Chart, Delivery Planning, Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Card 1: Demand Forecast Bar Chart */}
+          <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-xs space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">Demand Forecast</h3>
+                <span className="text-slate-400 hover:text-slate-600 cursor-pointer text-[10px]" title="Daily forecasted consumption rate values">ℹ</span>
+              </div>
+              <span className="text-[8px] font-bold text-slate-400">Forecasted Demand (MT)</span>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <span className="text-[10px] text-slate-400 font-bold block">IN 7 DAYS</span>
-              <span className={`text-sm font-bold mt-1 block ${activeForecast.in7Days < 10000 ? 'text-rose-600' : 'text-slate-700'}`}>
-                {Math.max(activeForecast.in7Days, 0).toLocaleString()} MT
-              </span>
+
+            <div className="pt-2 bg-slate-50/50 p-3 rounded-xl">
+              {/* SVG Bar Chart */}
+              <svg className="w-full h-32" viewBox="0 0 240 100" preserveAspectRatio="none">
+                {/* 12 Vertical bars */}
+                {[55, 60, 58, 62, 57, 59, 61, 58, 63, 60, 59, 56].map((val, idx) => {
+                  const w = 12;
+                  const x = idx * 19 + 8;
+                  const h = val;
+                  const y = 80 - h;
+                  return (
+                    <rect
+                      key={idx}
+                      x={x}
+                      y={y}
+                      width={w}
+                      height={h}
+                      rx="2"
+                      className="fill-blue-500 hover:fill-blue-600 transition-colors cursor-pointer"
+                    />
+                  );
+                })}
+                <line x1="0" y1="80" x2="240" y2="80" stroke="#cbd5e1" strokeWidth="1" />
+              </svg>
+              {/* X-axis indicators */}
+              <div className="flex justify-between text-[8px] font-bold text-slate-400 mt-2 px-1">
+                <span>1 Day</span>
+                <span>3 Days</span>
+                <span>5 Days</span>
+                <span>7 Days</span>
+                <span>10 Days</span>
+                <span>15 Days</span>
+              </div>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg">
-              <span className="text-[10px] text-slate-400 font-bold block">IN 15 DAYS</span>
-              <span className={`text-sm font-bold mt-1 block ${activeForecast.in15Days < 10000 ? 'text-rose-600' : 'text-slate-700'}`}>
-                {Math.max(activeForecast.in15Days, 0).toLocaleString()} MT
-              </span>
+          </div>
+
+          {/* Card 2: Delivery Planning */}
+          <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-xs flex flex-col justify-between min-h-[200px]">
+            <div>
+              <div className="flex items-center gap-1 mb-4">
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-display">Delivery Planning</h3>
+                <span className="text-slate-400 hover:text-slate-600 cursor-pointer text-[10px]" title="Siding allocation scheduler recommendations">ℹ</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-left mb-4">
+                <div>
+                  <span className="text-[9px] text-slate-400 block font-bold uppercase">Recommended Delivery</span>
+                  <span className="text-xs font-extrabold text-emerald-600 block mt-0.5">35,000 MT</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-400 block font-bold uppercase">Optimal Delivery Day</span>
+                  <span className="text-xs font-extrabold text-emerald-600 block mt-0.5">Tomorrow</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-400 block font-bold uppercase">Post Delivery Stock</span>
+                  <span className="text-xs font-extrabold text-slate-700 block mt-0.5">
+                    {(currentStock + 35000).toLocaleString()} MT
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-400 block font-bold uppercase">Days of Stock After</span>
+                  <span className="text-xs font-extrabold text-slate-700 block mt-0.5">
+                    {((currentStock + 35000) / dailyConsumption).toFixed(1)} Days
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { triggerToast('Scheduling sequence initialized.'); navigateTo('schedule'); }}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-blue-100 cursor-pointer font-bold"
+            >
+              🚚 Create Delivery Plan
+            </button>
+          </div>
+
+          {/* Card 3: Key Metrics */}
+          <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-xs">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 font-display text-left">Key Metrics</h3>
+            <div className="space-y-3.5 text-xs text-slate-500 font-semibold text-left">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span>Average Daily Burn (7 Days)</span>
+                <span className="font-bold text-slate-800">{(dailyConsumption - 20).toLocaleString()} MT</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span>Stock Variability</span>
+                <span className="font-bold text-slate-800">Low</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span>Forecast Confidence</span>
+                <span className="font-bold text-emerald-600">92%</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span>Safety Stock</span>
+                <span className="font-bold text-slate-800">10,000 MT</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Service Level</span>
+                <span className="font-bold text-slate-800">95%</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Warning card & recommended actions */}
-        <div className={`p-5 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col justify-between gap-4 ${isMobile ? '' : 'md:flex-row md:items-center'}`}>
+        {/* Bottom Crimson Banner */}
+        <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex gap-3">
-            <div className="p-2 bg-rose-100 text-rose-600 rounded-xl h-fit">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-2.5 bg-rose-100 text-rose-600 rounded-xl h-fit">
+              ⚠️
             </div>
             <div>
-              <h4 className="text-sm font-bold text-rose-900">Critical Stock Expected in {activeForecast.criticalDay} Days</h4>
-              <p className="text-xs text-rose-700 mt-0.5">Coal stocks will plummet below emergency reserves unless rakes are dispatched.</p>
+              <h4 className="text-xs font-bold text-rose-900">Critical Stock Expected in {criticalDay} Days</h4>
+              <p className="text-[10px] text-rose-700 font-medium mt-0.5">Coal stocks will plummet below emergency reserves unless rakes are dispatched.</p>
             </div>
           </div>
-          <div className="bg-white/80 border border-rose-100 rounded-xl p-3 text-center md:min-w-[120px]">
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Target Delivery</span>
-            <span className="text-lg font-bold text-rose-600">{activeForecast.recommendedRakes} Rakes</span>
-          </div>
-        </div>
 
-        {/* Button */}
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => navigateTo('allocation')}
-            className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-md cursor-pointer"
-          >
-            Allocate Rakes Now
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/80 border border-rose-100 rounded-xl px-4 py-2.5 text-center min-w-[120px]">
+              <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider block">Target Delivery</span>
+              <span className="text-sm font-extrabold text-rose-600 mt-0.5 block">{recommendedRakes} Rakes</span>
+            </div>
+            <button
+              onClick={handleDispatchNow}
+              className="px-5 py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-rose-100 transition-all cursor-pointer shrink-0 font-bold"
+            >
+              Dispatch Now
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -3769,6 +4165,78 @@ export default function App() {
     );
   };
 
+  const renderDetailedInsightsModal = () => {
+    if (!showDetailedInsightsModal) return null;
+    return (
+      <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 p-6 md:p-8 animate-fade-in text-left">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg">
+                🧠
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-800 text-sm md:text-base font-display leading-tight">AI Forecasting Core Insights</h3>
+                <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Statistical Engine Run Logs</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDetailedInsightsModal(false)}
+              className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
+            <div>
+              <span className="font-bold text-slate-800 block mb-1">Double Exponential Smoothing (Holt's Linear)</span>
+              <p>
+                The C-based prediction kernel processes daily siding discharge telemetry. The system dynamically updates the levels and trends of depletion using smoothing constants:
+                <strong className="text-slate-800 ml-1">Alpha = 0.15, Beta = 0.10</strong>.
+                This allows the model to filter out brief unloading noise while capturing sustained burn-rate deviations.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2">
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5 font-medium">
+                <span className="text-slate-500">Mean Absolute Percentage Error (MAPE)</span>
+                <span className="font-bold text-emerald-600">4.2% (Highly Reliable)</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/60 pb-1.5 font-medium">
+                <span className="text-slate-500">Safety Stock Buffer (Threshold)</span>
+                <span className="font-bold text-slate-800">10,000 MT</span>
+              </div>
+              <div className="flex justify-between font-medium">
+                <span className="text-slate-500">Variance Classification</span>
+                <span className="font-bold text-slate-800">Low (Stable consumption)</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="font-bold text-slate-800 block mb-1">Mathematical Stock Depletion Formula</span>
+              <p className="bg-slate-900 text-slate-300 p-3 rounded-lg font-mono text-[10px] text-center my-2 select-all">
+                S(t) = S(0) - [ t * D_burn ] + Tonnage_Delivered
+              </p>
+              <p>
+                Where <code className="bg-slate-50 px-1 py-0.5 rounded text-blue-600 font-bold font-mono">S(t)</code> represents the stock status at day <code className="bg-slate-50 px-1 py-0.5 rounded text-blue-600 font-bold font-mono">t</code>, and <code className="bg-slate-50 px-1 py-0.5 rounded text-blue-600 font-bold font-mono">D_burn</code> represents the stable burn rate. If stock falls below <code className="bg-slate-50 px-1 py-0.5 rounded text-blue-600 font-bold font-mono">10,000 MT</code>, the allocation engine immediately triggers high-priority warning flags.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setShowDetailedInsightsModal(false)}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-all shadow-lg shadow-blue-100 cursor-pointer font-bold"
+            >
+              Close Logs
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Main UI wrapper containing the logic for Desktop Layout and Mobile Layout natively.
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
@@ -4092,6 +4560,9 @@ export default function App() {
 
       {/* Dynamic CRIS HRMS Verification Modal */}
       {showHrmsVerification && renderHrmsModal()}
+
+      {/* Dynamic AI Insights Modal */}
+      {showDetailedInsightsModal && renderDetailedInsightsModal()}
     </div>
   );
 }
