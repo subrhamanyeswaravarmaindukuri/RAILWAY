@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Train,
   Activity,
@@ -34,6 +34,158 @@ import {
   codeFiles
 } from './mockData';
 import type { Rake, Siding, Alert } from './mockData';
+import L from 'leaflet';
+
+interface GeoStation {
+  name: string;
+  coord: [number, number];
+  desc?: string;
+}
+
+interface GeoRoute {
+  sourceName: string;
+  destName: string;
+  junctions: GeoStation[];
+}
+
+const geoRoutes: Record<string, GeoRoute> = {
+  'Mine A-Plant X': {
+    sourceName: 'Dhanbad Siding (JH)',
+    destName: 'NTPC Dadri (UP)',
+    junctions: [
+      { name: 'Dhanbad Coal Siding', coord: [23.7957, 86.4304], desc: 'Source: loading station' },
+      { name: 'Gaya Junction', coord: [24.7964, 85.0076], desc: 'Junction stop: crew change' },
+      { name: 'Pt. Deen Dayal Upadhyaya Jn', coord: [25.2818, 83.1235], desc: 'Intermediate: rake sorting' },
+      { name: 'Prayagraj Junction', coord: [25.4484, 81.8284], desc: 'Junction stop: yard control' },
+      { name: 'Kanpur Central', coord: [26.4542, 80.3503], desc: 'Intermediate: congestion check' },
+      { name: 'Tundla Junction', coord: [27.2052, 78.0207], desc: 'Junction stop: traffic clear' },
+      { name: 'NTPC Dadri Siding', coord: [28.5992, 77.5544], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine A-Plant Y': {
+    sourceName: 'Dhanbad Siding (JH)',
+    destName: 'Singrauli STPS (MP)',
+    junctions: [
+      { name: 'Dhanbad Coal Siding', coord: [23.7957, 86.4304], desc: 'Source: loading station' },
+      { name: 'Gaya Junction', coord: [24.7964, 85.0076], desc: 'Junction stop: crew change' },
+      { name: 'Pt. Deen Dayal Upadhyaya Jn', coord: [25.2818, 83.1235], desc: 'Intermediate: rake sorting' },
+      { name: 'Chopan Junction', coord: [24.5165, 83.0298], desc: 'Intermediate: bypass line' },
+      { name: 'Singrauli Siding', coord: [24.1039, 82.6842], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine A-Plant Z': {
+    sourceName: 'Dhanbad Siding (JH)',
+    destName: 'Simhadri STPS (AP)',
+    junctions: [
+      { name: 'Dhanbad Coal Siding', coord: [23.7957, 86.4304], desc: 'Source: loading station' },
+      { name: 'Asansol Junction', coord: [23.6871, 86.9747], desc: 'Junction stop' },
+      { name: 'Kharagpur Junction', coord: [22.3276, 87.3204], desc: 'Intermediate: check post' },
+      { name: 'Cuttack Junction', coord: [20.4625, 85.8830], desc: 'Intermediate: traffic clearance' },
+      { name: 'Bhubaneswar Yard', coord: [20.2724, 85.8438], desc: 'Junction stop' },
+      { name: 'Brahmapur Junction', coord: [19.3150, 84.7941], desc: 'Intermediate: power grid link' },
+      { name: 'Simhadri Siding', coord: [17.6322, 83.1558], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine B-Plant X': {
+    sourceName: 'Korba Siding (CG)',
+    destName: 'NTPC Dadri (UP)',
+    junctions: [
+      { name: 'Korba Siding', coord: [22.3533, 82.6841], desc: 'Source: loading station' },
+      { name: 'Bilaspur Junction', coord: [22.0797, 82.1391], desc: 'Junction stop' },
+      { name: 'Anuppur Junction', coord: [23.1072, 81.6888], desc: 'Intermediate check' },
+      { name: 'Katni Junction', coord: [23.8344, 80.4005], desc: 'Intermediate: sorting yard' },
+      { name: 'Prayagraj Junction', coord: [25.4484, 81.8284], desc: 'Junction stop' },
+      { name: 'Kanpur Central', coord: [26.4542, 80.3503], desc: 'Intermediate: speed check' },
+      { name: 'NTPC Dadri Siding', coord: [28.5992, 77.5544], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine B-Plant Y': {
+    sourceName: 'Korba Siding (CG)',
+    destName: 'Singrauli STPS (MP)',
+    junctions: [
+      { name: 'Korba Siding', coord: [22.3533, 82.6841], desc: 'Source: loading station' },
+      { name: 'Pendra Road', coord: [22.7725, 81.9535], desc: 'Intermediate stop' },
+      { name: 'Anuppur Junction', coord: [23.1072, 81.6888], desc: 'Junction stop' },
+      { name: 'Singrauli Siding', coord: [24.1039, 82.6842], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine B-Plant Z': {
+    sourceName: 'Korba Siding (CG)',
+    destName: 'Simhadri STPS (AP)',
+    junctions: [
+      { name: 'Korba Siding', coord: [22.3533, 82.6841], desc: 'Source: loading station' },
+      { name: 'Bilaspur Junction', coord: [22.0797, 82.1391], desc: 'Junction stop' },
+      { name: 'Raipur Junction', coord: [21.2514, 81.6296], desc: 'Junction stop' },
+      { name: 'Titlagarh Junction', coord: [20.2925, 83.0135], desc: 'Intermediate check' },
+      { name: 'Rayagada Junction', coord: [19.1678, 83.4158], desc: 'Intermediate bypass' },
+      { name: 'Vizianagaram Jn', coord: [18.1130, 83.4004], desc: 'Junction stop' },
+      { name: 'Simhadri Siding', coord: [17.6322, 83.1558], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine C-Plant X': {
+    sourceName: 'Talcher Siding (OD)',
+    destName: 'NTPC Dadri (UP)',
+    junctions: [
+      { name: 'Talcher Coal Siding', coord: [20.9507, 85.2286], desc: 'Source: loading station' },
+      { name: 'Sambalpur Junction', coord: [21.4787, 83.9786], desc: 'Junction stop' },
+      { name: 'Jharsuguda Junction', coord: [21.8540, 84.0254], desc: 'Intermediate check' },
+      { name: 'Bilaspur Junction', coord: [22.0797, 82.1391], desc: 'Junction stop' },
+      { name: 'Katni Junction', coord: [23.8344, 80.4005], desc: 'Intermediate yard' },
+      { name: 'Prayagraj Junction', coord: [25.4484, 81.8284], desc: 'Junction stop' },
+      { name: 'NTPC Dadri Siding', coord: [28.5992, 77.5544], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine C-Plant Y': {
+    sourceName: 'Talcher Siding (OD)',
+    destName: 'Singrauli STPS (MP)',
+    junctions: [
+      { name: 'Talcher Coal Siding', coord: [20.9507, 85.2286], desc: 'Source: loading station' },
+      { name: 'Sambalpur Junction', coord: [21.4787, 83.9786], desc: 'Junction stop' },
+      { name: 'Jharsuguda Junction', coord: [21.8540, 84.0254], desc: 'Intermediate check' },
+      { name: 'Anuppur Junction', coord: [23.1072, 81.6888], desc: 'Junction stop' },
+      { name: 'Singrauli Siding', coord: [24.1039, 82.6842], desc: 'Destination: unloading yard' }
+    ]
+  },
+  'Mine C-Plant Z': {
+    sourceName: 'Talcher Siding (OD)',
+    destName: 'Simhadri STPS (AP)',
+    junctions: [
+      { name: 'Talcher Coal Siding', coord: [20.9507, 85.2286], desc: 'Source: loading station' },
+      { name: 'Cuttack Junction', coord: [20.4625, 85.8830], desc: 'Junction stop' },
+      { name: 'Bhubaneswar Yard', coord: [20.2724, 85.8438], desc: 'Junction stop' },
+      { name: 'Khurda Road Jn', coord: [20.1706, 85.7335], desc: 'Intermediate check' },
+      { name: 'Brahmapur Junction', coord: [19.3150, 84.7941], desc: 'Intermediate stop' },
+      { name: 'Simhadri Siding', coord: [17.6322, 83.1558], desc: 'Destination: unloading yard' }
+    ]
+  }
+};
+
+const getRouteData = (source: string, destination: string): GeoRoute => {
+  const key = `${source}-${destination}`;
+  if (geoRoutes[key]) {
+    return geoRoutes[key];
+  }
+  return geoRoutes['Mine A-Plant X'];
+};
+
+const interpolateCoordinates = (coords: [number, number][], progress: number): [number, number] => {
+  if (coords.length === 0) return [23.7957, 86.4304];
+  if (coords.length === 1 || progress <= 0) return coords[0];
+  if (progress >= 100) return coords[coords.length - 1];
+
+  const totalSegments = coords.length - 1;
+  const rawIndex = (progress / 100) * totalSegments;
+  const index = Math.floor(rawIndex);
+  const segmentProgress = rawIndex - index;
+
+  const start = coords[index];
+  const end = coords[index + 1];
+
+  const lat = start[0] + (end[0] - start[0]) * segmentProgress;
+  const lng = start[1] + (end[1] - start[1]) * segmentProgress;
+
+  return [lat, lng];
+};
 
 export default function App() {
   // Navigation & authentication state
@@ -80,6 +232,128 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Refs for Leaflet Map
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const trainMarkerRef = useRef<L.Marker | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const completedPolylineRef = useRef<L.Polyline | null>(null);
+  const stationMarkersRef = useRef<L.Marker[]>([]);
+
+  // Telemetry tracking useEffect hook
+  useEffect(() => {
+    if (currentScreen !== 'tracking' || !mapContainerRef.current) {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        trainMarkerRef.current = null;
+        routePolylineRef.current = null;
+        completedPolylineRef.current = null;
+        stationMarkersRef.current = [];
+      }
+      return;
+    }
+
+    const active = rakes.find((r) => r.id === selectedRakeId) || rakes[0];
+    const route = getRouteData(active.source, active.destination);
+    const coords = route.junctions.map((j) => j.coord);
+    const trainPos = interpolateCoordinates(coords, active.routeProgress);
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: true,
+        attributionControl: false
+      }).setView(trainPos, 6);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18
+      }).addTo(map);
+
+      mapInstanceRef.current = map;
+    }
+
+    const map = mapInstanceRef.current;
+
+    // Remove old markers
+    stationMarkersRef.current.forEach((m) => m.remove());
+    stationMarkersRef.current = [];
+
+    const createCustomIcon = (color: string, label: string) => {
+      return L.divIcon({
+        className: 'custom-map-marker',
+        html: `<div class="flex flex-col items-center">
+                 <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md" style="background-color: ${color}"></div>
+                 <span class="text-[9px] font-bold text-slate-800 bg-white/95 border border-slate-200 rounded px-1.5 py-0.5 mt-0.5 whitespace-nowrap shadow-xs">${label}</span>
+               </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 6]
+      });
+    };
+
+    route.junctions.forEach((j, index) => {
+      let color = '#3b82f6';
+      if (index === 0) color = '#10b981';
+      if (index === route.junctions.length - 1) color = '#8b5cf6';
+
+      const marker = L.marker(j.coord, {
+        icon: createCustomIcon(color, j.name)
+      })
+      .bindPopup(`<strong>${j.name}</strong><br/>${j.desc || 'Railway Point'}`)
+      .addTo(map);
+
+      stationMarkersRef.current.push(marker);
+    });
+
+    if (routePolylineRef.current) {
+      routePolylineRef.current.setLatLngs(coords);
+    } else {
+      routePolylineRef.current = L.polyline(coords, {
+        color: '#94a3b8',
+        weight: 3,
+        dashArray: '5, 8',
+        opacity: 0.8
+      }).addTo(map);
+    }
+
+    const completedCoords = coords.slice(0, Math.floor((active.routeProgress / 100) * coords.length) + 1);
+    completedCoords.push(trainPos);
+
+    if (completedPolylineRef.current) {
+      completedPolylineRef.current.setLatLngs(completedCoords);
+    } else {
+      completedPolylineRef.current = L.polyline(completedCoords, {
+        color: active.status === 'DELAYED' ? '#f43f5e' : '#2563eb',
+        weight: 4,
+        opacity: 0.9
+      }).addTo(map);
+    }
+
+    const pulsingIcon = L.divIcon({
+      className: 'custom-pulsing-marker',
+      html: `<div class="relative flex items-center justify-center">
+               <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-blue-400 opacity-60"></span>
+               <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-600 border-2 border-white shadow-lg"></span>
+             </div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    if (trainMarkerRef.current) {
+      trainMarkerRef.current.setLatLng(trainPos);
+    } else {
+      trainMarkerRef.current = L.marker(trainPos, {
+        icon: pulsingIcon
+      })
+      .bindPopup(`<strong>Rake ${active.id}</strong><br/>Speed: 52 km/h<br/>Status: ${active.status}`)
+      .addTo(map);
+    }
+
+    map.flyTo(trainPos, 6, {
+      animate: true,
+      duration: 1.2
+    });
+  }, [currentScreen, selectedRakeId, rakes]);
 
   // Back navigation helper
   const navigateTo = (screen: string) => {
@@ -657,49 +931,68 @@ export default function App() {
 
         {/* Map Rendering Panel */}
         <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-2 font-display">Route Map</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-display">Route Map</h3>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span> Live GPS Tracking Active
+            </span>
+          </div>
           
-          <div className="relative bg-slate-50 border border-slate-100 rounded-xl p-8 min-h-[160px] flex flex-col justify-center overflow-hidden">
-            {/* Route track line */}
-            <div className="absolute left-16 right-16 top-1/2 -translate-y-1/2 h-1 bg-slate-200 rounded-full">
-              {/* Progress Line */}
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  activeRake.status === 'DELAYED' ? 'bg-rose-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${activeRake.routeProgress}%` }}
-              ></div>
-            </div>
+          <div className="relative w-full rounded-xl overflow-hidden border border-slate-100 shadow-sm" style={{ zIndex: 10 }}>
+            {/* The Map Div */}
+            <div ref={mapContainerRef} className="h-96 w-full bg-slate-50 relative" />
 
-            {/* Stations */}
-            <div className="relative flex justify-between items-center z-10">
-              {activeRake.routeStations.map((station, index) => {
-                const totalStations = activeRake.routeStations.length;
+            {/* Map Telemetry Overlay card */}
+            <div className="absolute top-4 right-4 z-[1000] p-4 bg-white/90 backdrop-blur-md border border-slate-100 rounded-xl shadow-lg w-52 leading-tight space-y-2 text-xs">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Live Telemetry</span>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Position:</span>
+                <strong className="text-slate-800 font-bold font-mono">
+                  {interpolateCoordinates(
+                    getRouteData(activeRake.source, activeRake.destination).junctions.map((j) => j.coord),
+                    activeRake.routeProgress
+                  )[0].toFixed(4)}° N
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium"></span>
+                <strong className="text-slate-800 font-bold font-mono">
+                  {interpolateCoordinates(
+                    getRouteData(activeRake.source, activeRake.destination).junctions.map((j) => j.coord),
+                    activeRake.routeProgress
+                  )[1].toFixed(4)}° E
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Speed:</span>
+                <strong className="text-blue-600 font-bold">52 km/h</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">GPS Lock:</span>
+                <strong className="text-green-600 font-bold">LOCKED (99.8%)</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Real stations checklist */}
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
+            <h4 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Route Siding Milestones</h4>
+            <div className="flex flex-col gap-2">
+              {getRouteData(activeRake.source, activeRake.destination).junctions.map((j, index, arr) => {
+                const totalStations = arr.length;
                 const progressPercentage = (index / (totalStations - 1)) * 100;
                 const visited = activeRake.routeProgress >= progressPercentage;
                 const active = Math.abs(activeRake.routeProgress - progressPercentage) < (100 / (totalStations - 1)) * 0.5;
 
                 return (
-                  <div key={index} className="flex flex-col items-center">
-                    <div
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                        active
-                          ? 'bg-blue-600 border-blue-200 ring-4 ring-blue-50 text-white animate-bounce'
-                          : visited
-                          ? 'bg-emerald-500 border-emerald-200 text-white'
-                          : 'bg-white border-slate-300 text-slate-400'
-                      }`}
-                    >
-                      {visited ? <CheckCircle2 className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />}
+                  <div key={index} className="flex items-center justify-between text-xs border-b border-slate-200/50 pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full border ${
+                        active ? 'bg-blue-600 border-blue-200 animate-pulse' : visited ? 'bg-emerald-500 border-emerald-200' : 'bg-slate-200 border-slate-300'
+                      }`}></div>
+                      <span className={`font-semibold ${active ? 'text-blue-600 font-bold' : visited ? 'text-slate-700' : 'text-slate-400'}`}>{j.name}</span>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-700 mt-2 bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-2xs">
-                      {station}
-                    </span>
-                    {active && (
-                      <span className="text-[8px] font-semibold text-blue-600 mt-1 uppercase tracking-wider animate-pulse">
-                        Current Loc
-                      </span>
-                    )}
+                    <span className="text-[10px] font-medium text-slate-400">{j.desc || (index === 0 ? 'Start Siding' : index === arr.length - 1 ? 'End Siding' : 'Railway Junction')}</span>
                   </div>
                 );
               })}
