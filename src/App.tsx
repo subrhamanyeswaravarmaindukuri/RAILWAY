@@ -749,6 +749,14 @@ export default function App() {
   const [hrmsLoading, setHrmsLoading] = useState(false);
   const [hrmsError, setHrmsError] = useState<string | null>(null);
   const [tempLoginDetails, setTempLoginDetails] = useState<{ user: string; type: string } | null>(null);
+
+  // Registration HRMS matching database
+  const [signUpHrmsId, setSignUpHrmsId] = useState('');
+  const [registeredHrmsIds, setRegisteredHrmsIds] = useState<Record<string, string>>({
+    'sih-user': 'RJP842',
+    'coal-admin': 'DLH915',
+    'admin': 'CRIS99'
+  });
   
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
@@ -1191,6 +1199,13 @@ export default function App() {
       return;
     }
 
+    // Verify against registered HRMS ID database
+    const expectedHrms = registeredHrmsIds[tempLoginDetails?.user || ''];
+    if (expectedHrms && expectedHrms !== cleanId) {
+      setHrmsError(`Invalid HRMS ID. The registered ID for this user is "...${expectedHrms.substring(3)}".`);
+      return;
+    }
+
     setHrmsError(null);
     setHrmsLoading(true);
     setTimeout(() => {
@@ -1222,16 +1237,26 @@ export default function App() {
     const cleanUser = signUpUsername.trim();
     const cleanEmail = signUpEmail.trim();
     const cleanPass = signUpPassword.trim();
+    const cleanHrms = signUpHrmsId.trim().toUpperCase();
     
-    if (!cleanUser || !cleanEmail || !cleanPass) {
+    if (!cleanUser || !cleanEmail || !cleanPass || !cleanHrms) {
       setSignUpError('Please fill out all fields.');
       return;
     }
 
-    // Register user in local memory
+    if (cleanHrms.length !== 6) {
+      setSignUpError('HRMS ID must be exactly 6 characters.');
+      return;
+    }
+
+    // Register user & hrms in local memory
     setRegisteredUsers(prev => ({
       ...prev,
       [cleanUser]: cleanPass
+    }));
+    setRegisteredHrmsIds(prev => ({
+      ...prev,
+      [cleanUser]: cleanHrms
     }));
 
     setSignUpError(null);
@@ -1245,6 +1270,7 @@ export default function App() {
     setSignUpUsername('');
     setSignUpEmail('');
     setSignUpPassword('');
+    setSignUpHrmsId('');
     setIsSigningUp(false);
   };
 
@@ -1533,6 +1559,18 @@ export default function App() {
                 value={signUpEmail}
                 onChange={(e) => setSignUpEmail(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Employee HRMS ID</label>
+              <input
+                type="text"
+                placeholder="6-char HRMS ID (e.g. RJP842)"
+                value={signUpHrmsId}
+                onChange={(e) => setSignUpHrmsId(e.target.value.substring(0, 6).toUpperCase())}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-mono uppercase tracking-wider"
                 required
               />
             </div>
