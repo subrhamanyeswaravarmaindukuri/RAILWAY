@@ -436,6 +436,7 @@ export default function App() {
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const routeOverlayPolylineRef = useRef<L.Polyline | null>(null);
   const stationMarkersRef = useRef<L.Marker[]>([]);
+  const lastActiveRouteRef = useRef<string>('');
 
   // Telemetry tracking useEffect hook
   useEffect(() => {
@@ -479,6 +480,15 @@ export default function App() {
       status = 'IN TRANSIT';
     } else {
       route = getRouteData(active.source, active.destination);
+    }
+
+    // Check if the overall route has changed to trigger zoom resetting
+    const routeKey = useCustomRoute 
+      ? `custom-${customRouteFrom}-${customRouteTo}` 
+      : `rake-${selectedRakeId}-${active.source}-${active.destination}`;
+    const routeChanged = lastActiveRouteRef.current !== routeKey;
+    if (routeChanged) {
+      lastActiveRouteRef.current = routeKey;
     }
 
     const coords = route.junctions.map((j) => j.coord);
@@ -572,6 +582,16 @@ export default function App() {
       .bindPopup(`<strong>${j.name}</strong><br/>${j.desc || 'Railway Junction Point'}`)
       .addTo(map);
 
+      // On marker click, fly in deeply to zoom 16 and activate satellite imagery tiles
+      marker.on('click', () => {
+        map.flyTo(j.coord, 16, {
+          animate: true,
+          duration: 1.5
+        });
+        setActiveMapLayer('satellite');
+        triggerToast(`Zooming to siding: ${j.name} (Satellite View)`, 'info');
+      });
+
       stationMarkersRef.current.push(marker);
     });
 
@@ -651,10 +671,12 @@ export default function App() {
       }
     }
 
-    map.flyTo(trainPos, 6, {
-      animate: true,
-      duration: 1.2
-    });
+    if (routeChanged) {
+      map.flyTo(trainPos, 6, {
+        animate: true,
+        duration: 1.2
+      });
+    }
   }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress, useCustomRoute, customRouteFrom, customRouteTo, activeMapLayer]);
 
   // Back navigation helper
