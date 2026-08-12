@@ -1692,10 +1692,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Sidebar Area: Quick Actions & Live Session Info */}
-          <div className="space-y-6">
+          {/* Sidebar Area: Quick Actions */}
+          <div className="flex flex-col h-full">
             {/* Quick Actions */}
-            <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col justify-between">
+            <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col justify-between flex-1 h-full">
               <div>
                 <h3 className="text-base font-bold text-slate-800 mb-4 font-display">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -1727,41 +1727,6 @@ export default function App() {
                     <AlertTriangle className="w-6 h-6 mb-2" />
                     <span className="text-xs">Alert Center</span>
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Session Monitor Card */}
-            <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl shadow-sm border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold tracking-wider uppercase text-blue-400 font-display">Active Session Monitor</h3>
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-              </div>
-              <div className="space-y-3 text-xs text-slate-300">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span>Sign In User</span>
-                  <span className="font-bold text-white">{username || 'Admin'}</span>
-                </div>
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span>Connection IP</span>
-                  <span className="font-mono font-bold text-white">{sessionIP || '10.227.28.56'}</span>
-                </div>
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                  <span>Auth Timestamp</span>
-                  <span className="text-white font-medium">{sessionLoginTime || 'August 12, 2026, 11:40 AM'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Protocol</span>
-                  <span className="text-emerald-400 font-bold">SECURE SSL / TLS 1.3</span>
-                </div>
-                <div className="pt-2">
-                  <span className="text-[10px] text-slate-500 block mb-1">Session Auth Token</span>
-                  <div className="font-mono text-[9px] bg-slate-950 p-2 rounded text-blue-400 overflow-x-auto whitespace-nowrap scrollbar-thin select-all">
-                    {sessionToken || 'JWT_SIH1319_LOCAL_SECURE_DEMO_KEY'}
-                  </div>
                 </div>
               </div>
             </div>
