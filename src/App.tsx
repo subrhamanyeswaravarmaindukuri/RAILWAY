@@ -250,20 +250,28 @@ export default function App() {
       } catch (err) {
         console.error("Failed to parse cached user location:", err);
       }
-    } else if (navigator.geolocation) {
+    }
+  }, []);
+
+  const requestUserLocation = () => {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           setUserLocation(loc);
           localStorage.setItem('railrake_user_location', JSON.stringify(loc));
+          triggerToast('Current location loaded successfully!', 'success');
         },
         (err) => {
           console.warn("Geolocation access denied or timed out:", err);
+          triggerToast('Could not access location. Please enable GPS permissions.', 'warning');
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
+    } else {
+      triggerToast('Geolocation is not supported by your browser.', 'warning');
     }
-  }, []);
+  };
 
   // User input states
   const [allocationSuccess, setAllocationSuccess] = useState<string | null>(null);
@@ -956,19 +964,33 @@ export default function App() {
 
         {/* Selector Header */}
         <div className="p-4 bg-white border border-slate-100 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Rake:</span>
-            <select
-              value={selectedRakeId}
-              onChange={(e) => setSelectedRakeId(e.target.value)}
-              className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 focus:outline-none"
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Rake:</span>
+              <select
+                value={selectedRakeId}
+                onChange={(e) => setSelectedRakeId(e.target.value)}
+                className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-800 focus:outline-none"
+              >
+                {rakes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.id} ({r.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={requestUserLocation}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                userLocation
+                  ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold'
+                  : 'bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100'
+              }`}
             >
-              {rakes.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.id} ({r.status})
-                </option>
-              ))}
-            </select>
+              <MapPin className="w-3.5 h-3.5" />
+              {userLocation ? '📍 Location Active' : '📍 Use Current Location'}
+            </button>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
