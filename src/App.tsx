@@ -742,6 +742,13 @@ export default function App() {
   
   // Active Report PDF Viewer Modal State
   const [activeReportViewer, setActiveReportViewer] = useState<{ name: string; type: string } | null>(null);
+
+  // HRMS ID Verification States
+  const [showHrmsVerification, setShowHrmsVerification] = useState(false);
+  const [hrmsId, setHrmsId] = useState('');
+  const [hrmsLoading, setHrmsLoading] = useState(false);
+  const [hrmsError, setHrmsError] = useState<string | null>(null);
+  const [tempLoginDetails, setTempLoginDetails] = useState<{ user: string; type: string } | null>(null);
   
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
@@ -1166,9 +1173,31 @@ export default function App() {
     setLoginError(null);
     setLoginLoading(true);
     setTimeout(() => {
+      setLoginLoading(false);
+      setTempLoginDetails({ user: cleanUser, type: 'standard' });
+      setShowHrmsVerification(true);
+    }, 800);
+  };
+
+  const handleHrmsVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanId = hrmsId.trim().toUpperCase();
+    if (!cleanId) {
+      setHrmsError('HRMS ID is required.');
+      return;
+    }
+    if (cleanId.length !== 6) {
+      setHrmsError('HRMS ID must be exactly 6 characters (e.g. RJP842).');
+      return;
+    }
+
+    setHrmsError(null);
+    setHrmsLoading(true);
+    setTimeout(() => {
       const now = new Date();
       const loginTimeString = now.toLocaleString();
-      const randomToken = 'jwt_sih1319_' + Math.random().toString(36).substring(2, 10).toUpperCase() + '_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      const provider = tempLoginDetails?.type || 'standard';
+      const randomToken = `jwt_sih1319_${provider.toUpperCase()}_` + Math.random().toString(36).substring(2, 10).toUpperCase();
       const ips = ['10.227.28.56', '192.168.1.108', '172.16.23.45', '10.0.4.92'];
       const randomIP = ips[Math.floor(Math.random() * ips.length)];
       
@@ -1176,11 +1205,16 @@ export default function App() {
       setSessionToken(randomToken);
       setSessionIP(randomIP);
 
-      setLoginLoading(false);
+      setHrmsLoading(false);
+      setShowHrmsVerification(false);
       setIsAuthenticated(true);
       setCurrentScreen('dashboard');
-      triggerToast(`Successfully logged in as ${username}`);
-    }, 1000);
+      triggerToast(`HRMS ID ${cleanId} Verified. Logged in as ${tempLoginDetails?.user || 'Admin'}`);
+
+      // Reset states
+      setHrmsId('');
+      setTempLoginDetails(null);
+    }, 1200);
   };
 
   const handleSignUp = (e: React.FormEvent) => {
@@ -1411,15 +1445,10 @@ export default function App() {
                 setPassword('pass123');
                 setLoginLoading(true);
                 setTimeout(() => {
-                  const now = new Date();
-                  setSessionLoginTime(now.toLocaleString());
-                  setSessionToken('jwt_sih1319_GOOGLE_' + Math.random().toString(36).substring(2, 10).toUpperCase());
-                  setSessionIP('192.168.1.108');
                   setLoginLoading(false);
-                  setIsAuthenticated(true);
-                  setCurrentScreen('dashboard');
-                  triggerToast('Successfully logged in with Google');
-                }, 1000);
+                  setTempLoginDetails({ user: 'sih-user', type: 'google' });
+                  setShowHrmsVerification(true);
+                }, 800);
               }}
               className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-medium text-slate-600 transition-all cursor-pointer"
             >
@@ -1437,15 +1466,10 @@ export default function App() {
                 setPassword('secure');
                 setLoginLoading(true);
                 setTimeout(() => {
-                  const now = new Date();
-                  setSessionLoginTime(now.toLocaleString());
-                  setSessionToken('jwt_sih1319_MS_' + Math.random().toString(36).substring(2, 10).toUpperCase());
-                  setSessionIP('10.227.28.56');
                   setLoginLoading(false);
-                  setIsAuthenticated(true);
-                  setCurrentScreen('dashboard');
-                  triggerToast('Successfully logged in with Microsoft');
-                }, 1000);
+                  setTempLoginDetails({ user: 'coal-admin', type: 'microsoft' });
+                  setShowHrmsVerification(true);
+                }, 800);
               }}
               className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-medium text-slate-600 transition-all cursor-pointer"
             >
@@ -3640,6 +3664,73 @@ export default function App() {
     );
   };
 
+  const renderHrmsModal = () => {
+    if (!showHrmsVerification) return null;
+    return (
+      <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 p-6 md:p-8 animate-fade-in text-left">
+          <div className="flex items-center gap-3.5 mb-4 border-b border-slate-100 pb-4">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold text-lg">
+              🛡️
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-base md:text-lg font-display leading-tight">Workforce Verification</h3>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">CRIS Employee Gateway</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 mb-5 leading-normal">
+            Active workforce authentication is required to access Ministry of Coal dispatch consoles. Enter your 6-character alphanumeric HRMS Employee ID (e.g. <strong>RJP842</strong>) to verify your credentials.
+          </p>
+
+          <form onSubmit={handleHrmsVerify} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Employee HRMS ID</label>
+              <input
+                type="text"
+                placeholder="Enter 6-char HRMS ID"
+                value={hrmsId}
+                onChange={(e) => setHrmsId(e.target.value.substring(0, 6))}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-mono uppercase tracking-widest text-center"
+                disabled={hrmsLoading}
+                required
+              />
+            </div>
+
+            {hrmsError && (
+              <div className="p-3 text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg">
+                ⚠️ {hrmsError}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => { setShowHrmsVerification(false); setTempLoginDetails(null); setHrmsId(''); setHrmsError(null); }}
+                className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold text-sm rounded-xl transition-all cursor-pointer text-center"
+                disabled={hrmsLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                onClick={handleHrmsVerify}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center cursor-pointer font-bold"
+                disabled={hrmsLoading}
+              >
+                {hrmsLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  'Verify ID'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   // Main UI wrapper containing the logic for Desktop Layout and Mobile Layout natively.
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
@@ -3960,6 +4051,9 @@ export default function App() {
       
       {/* Dynamic PDF Report Viewer Modal */}
       {activeReportViewer && renderReportViewerModal()}
+
+      {/* Dynamic CRIS HRMS Verification Modal */}
+      {showHrmsVerification && renderHrmsModal()}
     </div>
   );
 }
