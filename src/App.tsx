@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   TrendingUp,
   User,
+  UserPlus,
   LogOut,
   Menu,
   Bell,
@@ -726,6 +727,18 @@ export default function App() {
   const [sessionLoginTime, setSessionLoginTime] = useState<string>('');
   const [sessionToken, setSessionToken] = useState<string>('');
   const [sessionIP, setSessionIP] = useState<string>('192.168.1.108');
+
+  // Registration & Sign Up state
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState<Record<string, string>>({
+    'sih-user': 'pass123',
+    'coal-admin': 'secure',
+    'admin': 'admin123'
+  });
+  const [signUpUsername, setSignUpUsername] = useState('');
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
@@ -1133,10 +1146,20 @@ export default function App() {
   // Authentication logic
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+    if (!cleanUser || !cleanPass) {
       setLoginError('Please enter username and password.');
       return;
     }
+    
+    // Check credentials against registered database
+    const expectedPassword = registeredUsers[cleanUser];
+    if (expectedPassword && expectedPassword !== cleanPass) {
+      setLoginError('Incorrect password for this user.');
+      return;
+    }
+
     setLoginError(null);
     setLoginLoading(true);
     setTimeout(() => {
@@ -1155,6 +1178,37 @@ export default function App() {
       setCurrentScreen('dashboard');
       triggerToast(`Successfully logged in as ${username}`);
     }, 1000);
+  };
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanUser = signUpUsername.trim();
+    const cleanEmail = signUpEmail.trim();
+    const cleanPass = signUpPassword.trim();
+    
+    if (!cleanUser || !cleanEmail || !cleanPass) {
+      setSignUpError('Please fill out all fields.');
+      return;
+    }
+
+    // Register user in local memory
+    setRegisteredUsers(prev => ({
+      ...prev,
+      [cleanUser]: cleanPass
+    }));
+
+    setSignUpError(null);
+    triggerToast('Account registered successfully! Directing to Login.');
+    
+    // Pre-fill login credentials
+    setUsername(cleanUser);
+    setPassword(cleanPass);
+    
+    // Reset inputs and return to login form
+    setSignUpUsername('');
+    setSignUpEmail('');
+    setSignUpPassword('');
+    setIsSigningUp(false);
   };
 
   const handleLogout = () => {
@@ -1270,6 +1324,10 @@ export default function App() {
 
   // 1. LOGIN SCREEN
   const renderLoginScreen = () => {
+    if (isSigningUp) {
+      return renderSignUpScreen();
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 bg-slate-50">
         <div className="w-full max-w-md p-8 bg-white rounded-3xl border border-slate-100 shadow-md">
@@ -1400,7 +1458,93 @@ export default function App() {
 
           <div className="text-center">
             <span className="text-xs text-slate-500">Don't have an account? </span>
-            <a href="#" onClick={(e) => { e.preventDefault(); triggerToast('Self-registration is disabled for production prototype.', 'warning'); }} className="text-xs font-semibold text-blue-600 hover:underline">Sign Up</a>
+            <button
+              onClick={() => setIsSigningUp(true)}
+              className="text-xs font-semibold text-blue-600 hover:underline bg-transparent border-0 cursor-pointer"
+            >
+              Sign Up
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSignUpScreen = () => {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full px-6 py-12 bg-slate-50">
+        <div className="w-full max-w-md p-8 bg-white rounded-3xl border border-slate-100 shadow-md">
+          {/* Logo & Header */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-2xl bg-blue-50 text-blue-600">
+              <UserPlus className="w-10 h-10" />
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-display">Create Account</h1>
+            <p className="text-sm font-medium text-slate-500">Register for RAILRAKE Operations Console</p>
+            <p className="text-xs text-slate-400 mt-1">SIH1319 • Ministry of Coal</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSignUp} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Username</label>
+              <input
+                type="text"
+                placeholder="Choose username"
+                value={signUpUsername}
+                onChange={(e) => setSignUpUsername(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+              <input
+                type="email"
+                placeholder="name@railrake.gov.in"
+                value={signUpEmail}
+                onChange={(e) => setSignUpEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+              <input
+                type="password"
+                placeholder="Choose password"
+                value={signUpPassword}
+                onChange={(e) => setSignUpPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                required
+              />
+            </div>
+
+            {signUpError && (
+              <div className="p-3 text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg">
+                ⚠️ {signUpError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              onClick={handleSignUp}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center cursor-pointer"
+            >
+              Register & Sign In
+            </button>
+          </form>
+
+          <div className="text-center mt-6">
+            <span className="text-xs text-slate-500">Already have an account? </span>
+            <button
+              onClick={() => setIsSigningUp(false)}
+              className="text-xs font-semibold text-blue-600 hover:underline bg-transparent border-0 cursor-pointer"
+            >
+              Sign In
+            </button>
           </div>
         </div>
       </div>
