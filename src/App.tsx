@@ -429,7 +429,7 @@ export default function App() {
   const trainMarkerRef = useRef<L.Marker | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
-  const completedPolylineRef = useRef<L.Polyline | null>(null);
+  const routeOverlayPolylineRef = useRef<L.Polyline | null>(null);
   const stationMarkersRef = useRef<L.Marker[]>([]);
 
   // Telemetry tracking useEffect hook
@@ -441,7 +441,10 @@ export default function App() {
         trainMarkerRef.current = null;
         userMarkerRef.current = null;
         routePolylineRef.current = null;
-        completedPolylineRef.current = null;
+        if (routeOverlayPolylineRef.current) {
+          routeOverlayPolylineRef.current.remove();
+          routeOverlayPolylineRef.current = null;
+        }
         stationMarkersRef.current = [];
       }
       return;
@@ -487,52 +490,68 @@ export default function App() {
     stationMarkersRef.current.forEach((m) => m.remove());
     stationMarkersRef.current = [];
 
-    const createCustomIcon = (color: string, label: string) => {
+    const createCustomIcon = (color: string, label: string, isMain: boolean = false) => {
+      const pulsingRing = isMain 
+        ? `<span class="animate-ping absolute inline-flex h-7 w-7 rounded-full opacity-35" style="background-color: ${color}"></span>`
+        : '';
+        
       return L.divIcon({
         className: 'custom-map-marker',
-        html: `<div class="flex flex-col items-center">
-                 <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md" style="background-color: ${color}"></div>
-                 <span class="text-[9px] font-bold text-slate-800 bg-white/95 border border-slate-200 rounded px-1.5 py-0.5 mt-0.5 whitespace-nowrap shadow-xs">${label}</span>
+        html: `<div class="relative flex flex-col items-center">
+                 <div class="relative flex items-center justify-center w-6 h-6">
+                   ${pulsingRing}
+                   <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-md z-10" style="background-color: ${color}"></div>
+                 </div>
+                 <span class="text-[10px] font-extrabold text-slate-900 bg-white/95 border border-slate-300 rounded-md px-2 py-0.5 mt-0.5 whitespace-nowrap shadow-md z-10">${label}</span>
                </div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 6]
+        iconSize: [32, 32],
+        iconAnchor: [16, 12]
       });
     };
-
+ 
     route.junctions.forEach((j, index) => {
-      let color = '#3b82f6';
-      if (index === 0) color = '#10b981';
-      if (index === route.junctions.length - 1) color = '#8b5cf6';
+      let color = '#2563eb';
+      let isMain = false;
+      
+      if (index === 0) {
+        color = '#10b981'; // Green for Source Siding
+        isMain = true;
+      } else if (index === route.junctions.length - 1) {
+        color = '#8b5cf6'; // Purple for Target Plant
+        isMain = true;
+      }
 
       const marker = L.marker(j.coord, {
-        icon: createCustomIcon(color, j.name)
+        icon: createCustomIcon(color, j.name, isMain)
       })
-      .bindPopup(`<strong>${j.name}</strong><br/>${j.desc || 'Railway Point'}`)
+      .bindPopup(`<strong>${j.name}</strong><br/>${j.desc || 'Railway Junction Point'}`)
       .addTo(map);
 
       stationMarkersRef.current.push(marker);
     });
 
+    const trackColor = status === 'DELAYED' ? '#dc2626' : '#2563eb';
+
+    // Draw solid railroad background path
     if (routePolylineRef.current) {
       routePolylineRef.current.setLatLngs(coords);
+      routePolylineRef.current.setStyle({ color: trackColor });
     } else {
       routePolylineRef.current = L.polyline(coords, {
-        color: '#94a3b8',
-        weight: 3,
-        dashArray: '5, 8',
-        opacity: 0.8
+        color: trackColor,
+        weight: 5,
+        opacity: 0.95
       }).addTo(map);
     }
 
-    const completedCoords = coords.slice(0, Math.floor((progress / 100) * coords.length) + 1);
-    completedCoords.push(trainPos);
-
-    if (completedPolylineRef.current) {
-      completedPolylineRef.current.setLatLngs(completedCoords);
+    // Draw white dash overlay to mimic railroad ties
+    if (routeOverlayPolylineRef.current) {
+      routeOverlayPolylineRef.current.setLatLngs(coords);
     } else {
-      completedPolylineRef.current = L.polyline(completedCoords, {
-        color: status === 'DELAYED' ? '#f43f5e' : '#2563eb',
-        weight: 4,
+      routeOverlayPolylineRef.current = L.polyline(coords, {
+        color: '#ffffff',
+        weight: 1.5,
+        dashArray: '6, 8',
         opacity: 0.9
       }).addTo(map);
     }
