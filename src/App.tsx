@@ -722,6 +722,11 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('dashboard');
   const [screenHistory, setScreenHistory] = useState<string[]>([]);
   
+  // Real-time login session details
+  const [sessionLoginTime, setSessionLoginTime] = useState<string>('');
+  const [sessionToken, setSessionToken] = useState<string>('');
+  const [sessionIP, setSessionIP] = useState<string>('192.168.1.108');
+  
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
   const [sidings, setSidings] = useState<Siding[]>(initialSidings);
@@ -1135,10 +1140,20 @@ export default function App() {
     setLoginError(null);
     setLoginLoading(true);
     setTimeout(() => {
+      const now = new Date();
+      const loginTimeString = now.toLocaleString();
+      const randomToken = 'jwt_sih1319_' + Math.random().toString(36).substring(2, 10).toUpperCase() + '_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      const ips = ['10.227.28.56', '192.168.1.108', '172.16.23.45', '10.0.4.92'];
+      const randomIP = ips[Math.floor(Math.random() * ips.length)];
+      
+      setSessionLoginTime(loginTimeString);
+      setSessionToken(randomToken);
+      setSessionIP(randomIP);
+
       setLoginLoading(false);
       setIsAuthenticated(true);
       setCurrentScreen('dashboard');
-      triggerToast('Successfully logged in as Admin');
+      triggerToast(`Successfully logged in as ${username}`);
     }, 1000);
   };
 
@@ -1377,7 +1392,7 @@ export default function App() {
         {/* Welcome Section */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 font-display">Hello, Admin</h2>
+            <h2 className="text-2xl font-bold text-slate-900 font-display">Hello, {username || 'Admin'}</h2>
             <p className="text-sm text-slate-500">Welcome back to Operations Console!</p>
           </div>
           {!isMobile && (
@@ -1501,55 +1516,93 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-800 mb-4 font-display">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => navigateTo('allocation')}
-                  className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all border border-blue-100 font-medium cursor-pointer"
-                >
-                  <Plus className="w-6 h-6 mb-2" />
-                  <span className="text-xs">Request Rake</span>
-                </button>
-                <button
-                  onClick={() => { setSelectedRakeId('R1024'); navigateTo('tracking'); }}
-                  className="flex flex-col items-center justify-center p-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition-all border border-emerald-100 font-medium cursor-pointer"
-                >
-                  <Activity className="w-6 h-6 mb-2" />
-                  <span className="text-xs">Track Rake</span>
-                </button>
-                <button
-                  onClick={() => navigateTo('schedule')}
-                  className="flex flex-col items-center justify-center p-4 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-all border border-amber-100 font-medium cursor-pointer"
-                >
-                  <Calendar className="w-6 h-6 mb-2" />
-                  <span className="text-xs">Schedule</span>
-                </button>
-                <button
-                  onClick={() => navigateTo('alerts')}
-                  className="flex flex-col items-center justify-center p-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl transition-all border border-rose-100 font-medium cursor-pointer"
-                >
-                  <AlertTriangle className="w-6 h-6 mb-2" />
-                  <span className="text-xs">Alert Center</span>
-                </button>
+          {/* Sidebar Area: Quick Actions & Live Session Info */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex flex-col justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 mb-4 font-display">Quick Actions</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => navigateTo('allocation')}
+                    className="flex flex-col items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all border border-blue-100 font-medium cursor-pointer"
+                  >
+                    <Plus className="w-6 h-6 mb-2" />
+                    <span className="text-xs">Request Rake</span>
+                  </button>
+                  <button
+                    onClick={() => { setSelectedRakeId('R1024'); navigateTo('tracking'); }}
+                    className="flex flex-col items-center justify-center p-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition-all border border-emerald-100 font-medium cursor-pointer"
+                  >
+                    <Activity className="w-6 h-6 mb-2" />
+                    <span className="text-xs">Track Rake</span>
+                  </button>
+                  <button
+                    onClick={() => navigateTo('schedule')}
+                    className="flex flex-col items-center justify-center p-4 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-all border border-amber-100 font-medium cursor-pointer"
+                  >
+                    <Calendar className="w-6 h-6 mb-2" />
+                    <span className="text-xs">Schedule</span>
+                  </button>
+                  <button
+                    onClick={() => navigateTo('alerts')}
+                    className="flex flex-col items-center justify-center p-4 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl transition-all border border-rose-100 font-medium cursor-pointer"
+                  >
+                    <AlertTriangle className="w-6 h-6 mb-2" />
+                    <span className="text-xs">Alert Center</span>
+                  </button>
+                </div>
+              </div>
+              {!isMobile && (
+                <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-semibold text-slate-700">Code Architecture</span>
+                  </div>
+                  <button
+                    onClick={() => navigateTo('codeviewer')}
+                    className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    View Code <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Active Session Monitor Card */}
+            <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl shadow-sm border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold tracking-wider uppercase text-blue-400 font-display">Active Session Monitor</h3>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              <div className="space-y-3 text-xs text-slate-300">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <span>Sign In User</span>
+                  <span className="font-bold text-white">{username || 'Admin'}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <span>Connection IP</span>
+                  <span className="font-mono font-bold text-white">{sessionIP || '10.227.28.56'}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <span>Auth Timestamp</span>
+                  <span className="text-white font-medium">{sessionLoginTime || 'August 12, 2026, 11:40 AM'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Protocol</span>
+                  <span className="text-emerald-400 font-bold">SECURE SSL / TLS 1.3</span>
+                </div>
+                <div className="pt-2">
+                  <span className="text-[10px] text-slate-500 block mb-1">Session Auth Token</span>
+                  <div className="font-mono text-[9px] bg-slate-950 p-2 rounded text-blue-400 overflow-x-auto whitespace-nowrap scrollbar-thin select-all">
+                    {sessionToken || 'JWT_SIH1319_LOCAL_SECURE_DEMO_KEY'}
+                  </div>
+                </div>
               </div>
             </div>
-            {!isMobile && (
-              <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-semibold text-slate-700">Code Architecture</span>
-                </div>
-                <button
-                  onClick={() => navigateTo('codeviewer')}
-                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-0.5 cursor-pointer"
-                >
-                  View Code <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -2873,12 +2926,45 @@ export default function App() {
         {/* User Card */}
         <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm flex items-center gap-5">
           <div className="w-16 h-16 bg-blue-100 text-blue-600 font-black text-2xl rounded-full flex items-center justify-center border-4 border-blue-50 shadow-sm">
-            AD
+            {(username || 'AD').substring(0, 2).toUpperCase()}
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-800 font-display">Admin</h3>
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Railway Operations Manager</p>
-            <p className="text-xs text-slate-400 mt-1">admin@railrake.com</p>
+            <h3 className="text-lg font-bold text-slate-800 font-display">{username || 'Admin'}</h3>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+              {(username || '').toLowerCase().includes('admin') ? 'System Operations Administrator' : 'Senior Rake Dispatcher'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">{(username || 'admin').toLowerCase()}@railrake.gov.in</p>
+          </div>
+        </div>
+
+        {/* Dynamic Sign-In Session Details Panel */}
+        <div className="p-6 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-slate-800 font-display">Active Session Metadata</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Logged In Username</span>
+              <span className="font-bold text-slate-800 block">{username || 'Admin'}</span>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Session IP Address</span>
+              <span className="font-bold text-slate-800 block font-mono">{sessionIP || '10.227.28.56'}</span>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Sign-In Timestamp</span>
+              <span className="font-bold text-slate-800 block">{sessionLoginTime || 'August 12, 2026, 11:40 AM'}</span>
+            </div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Encryption Protocol</span>
+              <span className="font-bold text-emerald-600 block flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping"></span> SECURE TLS 1.3
+              </span>
+            </div>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Active Session Token (JWT)</span>
+            <div className="font-mono text-xs bg-slate-900 text-blue-400 p-3 rounded-lg overflow-x-auto whitespace-nowrap select-all scrollbar-thin">
+              {sessionToken || 'JWT_SIH1319_LOCAL_SECURE_DEMO_KEY'}
+            </div>
           </div>
         </div>
 
@@ -3253,10 +3339,10 @@ export default function App() {
                     className="flex items-center gap-2.5 cursor-pointer group"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold text-xs flex items-center justify-center group-hover:ring-2 group-hover:ring-blue-500 transition-all">
-                      AD
+                      {(username || 'AD').substring(0, 2).toUpperCase()}
                     </div>
                     <div className="text-left leading-tight">
-                      <span className="text-xs font-bold text-slate-200 block group-hover:underline">Admin</span>
+                      <span className="text-xs font-bold text-slate-200 block group-hover:underline">{username || 'Admin'}</span>
                       <span className="text-[10px] text-slate-500 block">Operator</span>
                     </div>
                   </div>
@@ -3301,10 +3387,10 @@ export default function App() {
                     className="flex items-center gap-2.5 cursor-pointer group"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-sm">
-                      AD
+                      {(username || 'AD').substring(0, 2).toUpperCase()}
                     </div>
                     <div className="text-left leading-tight hidden md:block">
-                      <span className="text-xs font-bold text-slate-700 block group-hover:underline">Admin</span>
+                      <span className="text-xs font-bold text-slate-700 block group-hover:underline">{username || 'Admin'}</span>
                       <span className="text-[10px] text-slate-400 block">Railway Operations Manager</span>
                     </div>
                   </div>
