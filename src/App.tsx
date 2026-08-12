@@ -240,6 +240,7 @@ export default function App() {
 
   // Geolocation state
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
 
   // Prompt for browser geolocation on login or load, and save in localStorage
   useEffect(() => {
@@ -253,14 +254,57 @@ export default function App() {
     }
   }, []);
 
+  // Reverse geocode user location coordinates into City, State, and Pincode using OpenStreetMap Nominatim
+  useEffect(() => {
+    if (!userLocation) return;
+
+    const cachedAddress = localStorage.getItem('railrake_user_address');
+    if (cachedAddress) {
+      setUserAddress(cachedAddress);
+      return;
+    }
+
+    const fetchAddress = async () => {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${userLocation[0]}&lon=${userLocation[1]}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              'Accept-Language': 'en',
+              'User-Agent': 'RAILRAKE-SIH-Prototype'
+            }
+          }
+        );
+        const data = await response.json();
+        if (data && data.address) {
+          const addr = data.address;
+          const city = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || addr.county || 'Unknown City';
+          const state = addr.state || 'Unknown State';
+          const pincode = addr.postcode || '';
+          const formattedAddress = `${city}, ${state}${pincode ? ` - ${pincode}` : ''}`;
+          
+          setUserAddress(formattedAddress);
+          localStorage.setItem('railrake_user_address', formattedAddress);
+        }
+      } catch (err) {
+        console.warn("Failed to reverse geocode user coordinates:", err);
+      }
+    };
+
+    fetchAddress();
+  }, [userLocation]);
+
   const requestUserLocation = () => {
     if (navigator.geolocation) {
+      localStorage.removeItem('railrake_user_address');
+      setUserAddress(null);
+      
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           setUserLocation(loc);
           localStorage.setItem('railrake_user_location', JSON.stringify(loc));
-          triggerToast('Current location loaded successfully!', 'success');
+          triggerToast('Current location coordinates loaded. Locating address...', 'info');
         },
         (err) => {
           console.warn("Geolocation access denied or timed out:", err);
@@ -420,11 +464,12 @@ export default function App() {
 
       if (userMarkerRef.current) {
         userMarkerRef.current.setLatLng(userLocation);
+        userMarkerRef.current.setPopupContent(`<strong>Your Current Location</strong><br/>${userAddress || 'Locating address...'}`);
       } else {
         userMarkerRef.current = L.marker(userLocation, {
           icon: userIcon
         })
-        .bindPopup('<strong>Your Current Location</strong><br/>GPS tracking node')
+        .bindPopup(`<strong>Your Current Location</strong><br/>${userAddress || 'Locating address...'}`)
         .addTo(map);
       }
     } else {
@@ -438,7 +483,7 @@ export default function App() {
       animate: true,
       duration: 1.2
     });
-  }, [currentScreen, selectedRakeId, rakes, userLocation]);
+  }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress]);
 
   // Back navigation helper
   const navigateTo = (screen: string) => {
@@ -984,12 +1029,14 @@ export default function App() {
               onClick={requestUserLocation}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 userLocation
-                  ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold'
+                  ? 'bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold animate-fade-in'
                   : 'bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100'
               }`}
             >
               <MapPin className="w-3.5 h-3.5" />
-              {userLocation ? '📍 Location Active' : '📍 Use Current Location'}
+              {userLocation 
+                ? `📍 ${userAddress || 'Locating Address...'}` 
+                : '📍 Use Current Location'}
             </button>
           </div>
 
