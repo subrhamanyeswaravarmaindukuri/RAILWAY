@@ -740,6 +740,9 @@ export default function App() {
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpError, setSignUpError] = useState<string | null>(null);
   
+  // Active Report PDF Viewer Modal State
+  const [activeReportViewer, setActiveReportViewer] = useState<{ name: string; type: string } | null>(null);
+  
   // App data state (enables actual interaction & mutation)
   const [rakes, setRakes] = useState<Rake[]>(initialRakes);
   const [sidings, setSidings] = useState<Siding[]>(initialSidings);
@@ -3040,7 +3043,7 @@ export default function App() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => triggerToast(`Viewing ${report.name} in tab...`, 'info')}
+                  onClick={() => setActiveReportViewer({ name: report.name, type: report.type })}
                   className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold rounded-lg cursor-pointer"
                 >
                   View
@@ -3224,6 +3227,450 @@ export default function App() {
             </div>
           ))
         )}
+      </div>
+    );
+  };
+
+  // PDF & Excel Report Viewer Modal Renderers
+  const renderReportContent = (name: string) => {
+    switch (name) {
+      case 'Daily Rake Report':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. EXECUTIVE SUMMARY</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">KPI Parameter</th>
+                    <th className="p-1.5 text-right">Today Actual</th>
+                    <th className="p-1.5 text-right">Target Level</th>
+                    <th className="p-1.5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-medium">Rakes Planned</td><td className="p-1.5 text-right">12</td><td className="p-1.5 text-right">12</td><td className="p-1.5 text-center">🟢</td></tr>
+                  <tr><td className="p-1.5 font-medium">Rakes Placed</td><td className="p-1.5 text-right">11</td><td className="p-1.5 text-right">12</td><td className="p-1.5 text-center">🟠</td></tr>
+                  <tr><td className="p-1.5 font-medium">Rakes Loaded</td><td className="p-1.5 text-right">10</td><td className="p-1.5 text-right">11</td><td className="p-1.5 text-center">🟠</td></tr>
+                  <tr><td className="p-1.5 font-medium">Rakes Released</td><td className="p-1.5 text-right">9</td><td className="p-1.5 text-right">10</td><td className="p-1.5 text-center">🟠</td></tr>
+                  <tr><td className="p-1.5 font-medium">Total Quantity Loaded</td><td className="p-1.5 text-right font-bold">27,850 MT</td><td className="p-1.5 text-right">30,000 MT</td><td className="p-1.5 text-center">🟠</td></tr>
+                  <tr><td className="p-1.5 font-medium">Average Turnaround Time</td><td className="p-1.5 text-right">11h 40m</td><td className="p-1.5 text-right">≤ 12h 00m</td><td className="p-1.5 text-center">🟢</td></tr>
+                  <tr className="text-rose-600 font-bold bg-rose-50/20"><td className="p-1.5">Detention / Demurrage charges</td><td className="p-1.5 text-right">₹1.42 Lakh</td><td className="p-1.5 text-right">≤ ₹1.00 Lakh</td><td className="p-1.5 text-center">🔴</td></tr>
+                </tbody>
+              </table>
+              <p className="text-[10px] text-slate-500 leading-normal italic">
+                *Management Alert: Mechanical breakdown on Conveyor No. 3 during afternoon shift operations caused a 42-minute loading stoppage, resulting in ₹1.42 Lakh demurrage fines.*
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. 24-HOUR RAKE SNAPSHOT</h3>
+              <table className="w-full text-left border border-slate-100 mb-2">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Rake ID</th>
+                    <th className="p-1.5">Type</th>
+                    <th className="p-1.5">Commodity</th>
+                    <th className="p-1.5">From</th>
+                    <th className="p-1.5">To</th>
+                    <th className="p-1.5">Status</th>
+                    <th className="p-1.5">Current Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-001</td><td className="p-1.5">BOXN</td><td className="p-1.5">Coal</td><td className="p-1.5">Mine A</td><td className="p-1.5">Plant A</td><td className="p-1.5 text-emerald-600">Released</td><td className="p-1.5 text-slate-500">En Route</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-002</td><td className="p-1.5">BOXN</td><td className="p-1.5">Coal</td><td className="p-1.5">Mine B</td><td className="p-1.5">Plant A</td><td className="p-1.5 text-amber-600">Loading</td><td className="p-1.5 text-slate-500">Yard Line 3</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-003</td><td className="p-1.5">BOBRN</td><td className="p-1.5">Coal</td><td className="p-1.5">Mine C</td><td className="p-1.5">Plant B</td><td className="p-1.5 text-blue-600">Placed</td><td className="p-1.5 text-slate-500">Tippler</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-004</td><td className="p-1.5">BOXN</td><td className="p-1.5">Coal</td><td className="p-1.5">Mine A</td><td className="p-1.5">Plant A</td><td className="p-1.5 text-slate-500">Awaiting</td><td className="p-1.5 text-slate-500">Arrival Yard</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">3. WAGON-LEVEL EXCEPTIONS</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Wagon No.</th>
+                    <th className="p-1.5">Rake ID</th>
+                    <th className="p-1.5">Identified Defect</th>
+                    <th className="p-1.5">Corrective Action Taken</th>
+                    <th className="p-1.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-mono">310245</td><td className="p-1.5 font-semibold">RK-002</td><td className="p-1.5 text-rose-600">Door lock defect noticed en route</td><td className="p-1.5">Yard maintenance team informed</td><td className="p-1.5 text-amber-600 font-bold">Pending</td></tr>
+                  <tr><td className="p-1.5 font-mono">310311</td><td className="p-1.5 font-semibold">RK-005</td><td className="p-1.5 text-rose-600">Side body panel rupture damage</td><td className="p-1.5">Detached and routed to workshop</td><td className="p-1.5 text-emerald-600 font-bold">Completed</td></tr>
+                  <tr><td className="p-1.5 font-mono">310344</td><td className="p-1.5 font-semibold">RK-006</td><td className="p-1.5 text-rose-600">Excess wet material sticking</td><td className="p-1.5">Assigned manual cleaning crew</td><td className="p-1.5 text-red-500 font-bold">Open</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'Weekly Rake Report':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. WEEKLY COAL TONNAGE LOAD SUMMARY</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Performance Week</th>
+                    <th className="p-1.5 text-right">Rakes Dispatched</th>
+                    <th className="p-1.5 text-right">Total Tonnage Loaded</th>
+                    <th className="p-1.5 text-right">Avg. Turnaround</th>
+                    <th className="p-1.5 text-center">Fines Accrued</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5">Week 1 (August 01 - August 07)</td><td className="p-1.5 text-right">72 Rakes</td><td className="p-1.5 text-right">198,500 MT</td><td className="p-1.5 text-right">11h 25m</td><td className="p-1.5 text-center text-emerald-600">₹3.2 Lakhs</td></tr>
+                  <tr className="bg-blue-50/20"><td className="p-1.5 font-bold">Week 2 (August 08 - August 14)</td><td className="p-1.5 text-right font-bold">78 Rakes</td><td className="p-1.5 text-right font-bold">214,300 MT</td><td className="p-1.5 text-right font-bold">11h 48m</td><td className="p-1.5 text-center text-rose-600 font-bold">₹5.4 Lakhs</td></tr>
+                  <tr className="bg-slate-50 font-bold"><td className="p-1.5">Variance (WoW)</td><td className="p-1.5 text-right text-emerald-600">+8.3%</td><td className="p-1.5 text-right text-emerald-600">+7.9%</td><td className="p-1.5 text-right text-rose-600">+23 min</td><td className="p-1.5 text-center text-rose-600">+68.7%</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. EQUIPMENT AVAILABILITY & OUTAGE SUMMARY</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Critical Equipment</th>
+                    <th className="p-1.5 text-right">Total Uptime</th>
+                    <th className="p-1.5 text-right">Downtime Hours</th>
+                    <th className="p-1.5">Primary Outage Causation Factor</th>
+                    <th className="p-1.5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-bold">Rotary Wagon Tipplers</td><td className="p-1.5 text-right">98.2%</td><td className="p-1.5 text-right">3.0 hours</td><td className="p-1.5">Minor hydraulic pump seal leakage repair</td><td className="p-1.5 text-center">🟢</td></tr>
+                  <tr><td className="p-1.5 font-bold">Main Conveyor Belts (1-5)</td><td className="p-1.5 text-right">92.4%</td><td className="p-1.5 text-right">12.8 hours</td><td className="p-1.5 text-rose-600 font-semibold">Belt alignment & tear on Conveyor No. 3</td><td className="p-1.5 text-center">🟠</td></tr>
+                  <tr><td className="p-1.5 font-bold">Electronic In-motion Weighbridges</td><td className="p-1.5 text-right">99.1%</td><td className="p-1.5 text-right">1.5 hours</td><td className="p-1.5">Calibration and testing slots</td><td className="p-1.5 text-center">🟢</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+              <h4 className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">Weekly Operations Directive</h4>
+              <p className="text-[9px] text-blue-600 leading-relaxed font-semibold">
+                To counter the rise in demurrage fines, all operations managers are directed to schedule belt inspections during shunter displacement handoffs.
+              </p>
+            </div>
+          </div>
+        );
+
+      case 'Monthly Coal Movement':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. COAL SOURCE-TO-DESTINATION MOVEMENT MATRIX</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Source Mine Area</th>
+                    <th className="p-1.5">Unloading Siding Target</th>
+                    <th className="p-1.5 text-right">Planned Target</th>
+                    <th className="p-1.5 text-right">Actual Dispatched</th>
+                    <th className="p-1.5 text-right">Variance</th>
+                    <th className="p-1.5 text-center">Achievement %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5">Mine A (Western Coalfields)</td><td className="p-1.5">Plant A Siding</td><td className="p-1.5 text-right">130,000 MT</td><td className="p-1.5 text-right text-emerald-600">120,400 MT</td><td className="p-1.5 text-right text-rose-500">-9,600 MT</td><td className="p-1.5 text-center">92.6%</td></tr>
+                  <tr><td className="p-1.5">Mine B (Mahanadi Coalfields)</td><td className="p-1.5">Plant A Siding</td><td className="p-1.5 text-right">90,000 MT</td><td className="p-1.5 text-right text-emerald-600">85,200 MT</td><td className="p-1.5 text-right text-rose-500">-4,800 MT</td><td className="p-1.5 text-center">94.6%</td></tr>
+                  <tr><td className="p-1.5">Mine C (Singareni Collieries)</td><td className="p-1.5">Plant B Siding</td><td className="p-1.5 text-right">100,000 MT</td><td className="p-1.5 text-right text-emerald-600">94,800 MT</td><td className="p-1.5 text-right text-rose-500">-5,200 MT</td><td className="p-1.5 text-center">94.8%</td></tr>
+                  <tr className="bg-slate-50 font-bold"><td className="p-1.5">Total Month Log</td><td className="p-1.5">All Sidings</td><td className="p-1.5 text-right">320,000 MT</td><td className="p-1.5 text-right">300,400 MT</td><td className="p-1.5 text-right text-rose-600">-19,600 MT</td><td className="p-1.5 text-center text-blue-600">93.8%</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. GRADED COAL DISTRIBUTION ANALYSIS</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Coal Grade Code</th>
+                    <th className="p-1.5">GCV Range Value</th>
+                    <th className="p-1.5 text-right">Total Rakes Loaded</th>
+                    <th className="p-1.5 text-right">Total Quantity (MT)</th>
+                    <th className="p-1.5 text-center">Average Ash %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-bold">G7 Thermal Grade</td><td className="p-1.5">5200 - 5500 kcal/kg</td><td className="p-1.5 text-right">48 Rakes</td><td className="p-1.5 text-right">132,480 MT</td><td className="p-1.5 text-center">34.2%</td></tr>
+                  <tr><td className="p-1.5 font-bold">G9 Thermal Grade</td><td className="p-1.5">4600 - 4900 kcal/kg</td><td className="p-1.5 text-right">34 Rakes</td><td className="p-1.5 text-right">93,840 MT</td><td className="p-1.5 text-center">38.6%</td></tr>
+                  <tr><td className="p-1.5 font-bold">G11 Thermal Grade</td><td className="p-1.5">4000 - 4300 kcal/kg</td><td className="p-1.5 text-right">27 Rakes</td><td className="p-1.5 text-right">74,080 MT</td><td className="p-1.5 text-center">41.8%</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'Demurrage Report':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center justify-between">
+              <div>
+                <h4 className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1">Financial Loss Alert: Demurrage Overflows</h4>
+                <p className="text-[9px] text-red-600 leading-relaxed font-semibold">
+                  Today's total estimated demurrage penalty is <strong className="text-red-700">₹1,22,000</strong>. Month-to-date fine has accrued to <strong className="text-red-700">₹5,40,000</strong>.
+                </p>
+              </div>
+              <span className="text-xl">⚠️</span>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. EXCESSS PLACEMENT INCIDENT LOG</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Rake ID</th>
+                    <th className="p-1.5 text-right">Free Time Allowed</th>
+                    <th className="p-1.5 text-right">Actual Handled</th>
+                    <th className="p-1.5 text-right text-rose-600">Excess Duration</th>
+                    <th className="p-1.5 text-right text-rose-600 font-bold">Demurrage Assessed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-002</td><td className="p-1.5 text-right">5h 00m</td><td className="p-1.5 text-right">6h 30m</td><td className="p-1.5 text-right text-rose-600">+1h 30m</td><td className="p-1.5 text-right text-rose-600 font-bold">₹42,000</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-004</td><td className="p-1.5 text-right">5h 00m</td><td className="p-1.5 text-right">6h 35m</td><td className="p-1.5 text-right text-rose-600">+1h 35m</td><td className="p-1.5 text-right text-rose-600 font-bold">₹45,000</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-007</td><td className="p-1.5 text-right">5h 00m</td><td className="p-1.5 text-right">5h 40m</td><td className="p-1.5 text-right text-rose-600">+40m</td><td className="p-1.5 text-right text-rose-600 font-bold">₹18,000</td></tr>
+                  <tr><td className="p-1.5 text-blue-600 font-bold">RK-008</td><td className="p-1.5 text-right">5h 00m</td><td className="p-1.5 text-right">5h 35m</td><td className="p-1.5 text-right text-rose-600">+35m</td><td className="p-1.5 text-right text-rose-600 font-bold">₹17,000</td></tr>
+                  <tr className="bg-slate-50 font-bold"><td className="p-1.5 text-slate-800">Total Loss</td><td className="p-1.5 text-right">-</td><td className="p-1.5 text-right">-</td><td className="p-1.5 text-right text-rose-600">+4h 20m</td><td className="p-1.5 text-right text-rose-600 font-extrabold">₹1,22,000</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. DEMURRAGE ROOT CAUSES RANKING</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Rank</th>
+                    <th className="p-1.5">Primary Bottleneck Cause</th>
+                    <th className="p-1.5 text-right">Fines Accrued</th>
+                    <th className="p-1.5 text-right">Total Hours Lost</th>
+                    <th className="p-1.5 text-center">Remediation Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-bold">1</td><td className="p-1.5">Loading equipment conveyor teardowns</td><td className="p-1.5 text-right font-semibold">₹62,000</td><td className="p-1.5 text-right">2.2 hours</td><td className="p-1.5 text-center text-rose-600 font-bold">Critical Open</td></tr>
+                  <tr><td className="p-1.5 font-bold">2</td><td className="p-1.5">Weighbridge queue congestion latency</td><td className="p-1.5 text-right font-semibold">₹35,000</td><td className="p-1.5 text-right">1.1 hours</td><td className="p-1.5 text-center text-amber-600 font-bold">In-Progress</td></tr>
+                  <tr><td className="p-1.5 font-bold">3</td><td className="p-1.5">Wagon placement/shunter crew availability</td><td className="p-1.5 text-right font-semibold">₹25,000</td><td className="p-1.5 text-right">0.9 hours</td><td className="p-1.5 text-center text-emerald-600 font-bold">Resolved</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'Delay Analysis Report':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. DELAY HOUR DISTRIBUTION BY CATEGORY</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Delay Category Factor</th>
+                    <th className="p-1.5 text-right">Weekly Delay Hours</th>
+                    <th className="p-1.5 text-right">Monthly Delay Hours</th>
+                    <th className="p-1.5 text-right">Severity Score (1-10)</th>
+                    <th className="p-1.5 text-center">Alert Priority</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-medium">Siding Yard Congestion</td><td className="p-1.5 text-right">14.5 hours</td><td className="p-1.5 text-right">58.0 hours</td><td className="p-1.5 text-right font-bold text-rose-600">8.5 / 10</td><td className="p-1.5 text-center text-rose-600 font-bold">🔴 CRITICAL</td></tr>
+                  <tr><td className="p-1.5 font-medium">Mechanical Outages</td><td className="p-1.5 text-right">11.2 hours</td><td className="p-1.5 text-right">38.4 hours</td><td className="p-1.5 text-right font-bold text-rose-600">7.2 / 10</td><td className="p-1.5 text-center text-rose-600 font-bold">🔴 CRITICAL</td></tr>
+                  <tr><td className="p-1.5 font-medium">Locomotive Crew Shifting</td><td className="p-1.5 text-right">8.2 hours</td><td className="p-1.5 text-right">24.6 hours</td><td className="p-1.5 text-right font-bold text-amber-600">6.0 / 10</td><td className="p-1.5 text-center text-amber-600 font-bold">🟠 HIGH</td></tr>
+                  <tr><td className="p-1.5 font-medium">Weighbridge Queuing</td><td className="p-1.5 text-right">6.8 hours</td><td className="p-1.5 text-right">18.2 hours</td><td className="p-1.5 text-right font-bold text-slate-600">4.5 / 10</td><td className="p-1.5 text-center text-slate-500 font-bold">🟡 MEDIUM</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. PHYSICAL CORRIDOR TRANSIT TIME VARIANCE</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Corridor Route Link</th>
+                    <th className="p-1.5 text-right">Scheduled Duration</th>
+                    <th className="p-1.5 text-right">Actual Avg Duration</th>
+                    <th className="p-1.5 text-right text-rose-600">Delay Variance</th>
+                    <th className="p-1.5">Primary Congestion Node Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5">Mehsana to Vadodara Junction</td><td className="p-1.5 text-right">6h 15m</td><td className="p-1.5 text-right">6h 40m</td><td className="p-1.5 text-right text-rose-600">+25 min</td><td className="p-1.5">Ahmedabad Yard Switch</td></tr>
+                  <tr><td className="p-1.5">Vadodara to Bhusaval Junction</td><td className="p-1.5 text-right">10h 30m</td><td className="p-1.5 text-right">11h 15m</td><td className="p-1.5 text-right text-rose-600">+45 min</td><td className="p-1.5">Vyara Single-Track Crossing</td></tr>
+                  <tr><td className="p-1.5">Bhusaval to Vijayawada Junction</td><td className="p-1.5 text-right">18h 45m</td><td className="p-1.5 text-right">20h 10m</td><td className="p-1.5 text-right text-rose-600">+1h 25m</td><td className="p-1.5">Wardha-Balharshah Block Section</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      case 'Siding Performance Index':
+        return (
+          <div className="space-y-6 text-slate-800 text-[11px] md:text-xs">
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">1. SIDING YARD EFFICIENCY RATINGS</h3>
+              <table className="w-full text-left border border-slate-100 mb-3">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Siding Location Yard</th>
+                    <th className="p-1.5 text-right">Rakes Handled (MTD)</th>
+                    <th className="p-1.5 text-right">Avg. Placement Latency</th>
+                    <th className="p-1.5 text-right text-blue-600 font-bold">Performance Score</th>
+                    <th className="p-1.5 text-center">Efficiency Grade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-1.5">Vadodara Junction Yard</td><td className="p-1.5 text-right">182 Rakes</td><td className="p-1.5 text-right">3h 05m</td><td className="p-1.5 text-right text-emerald-600 font-bold">92.4%</td><td className="p-1.5 text-center text-emerald-600">🟢 Excellent</td></tr>
+                  <tr><td className="p-1.5">Ahmedabad Junction Yard</td><td className="p-1.5 text-right">148 Rakes</td><td className="p-1.5 text-right">3h 18m</td><td className="p-1.5 text-right text-emerald-600 font-bold">89.6%</td><td className="p-1.5 text-center text-emerald-600">🟢 Very Good</td></tr>
+                  <tr><td className="p-1.5">Vijayawada Siding Terminal</td><td className="p-1.5 text-right">112 Rakes</td><td className="p-1.5 text-right">3h 24m</td><td className="p-1.5 text-right text-emerald-600 font-bold">88.2%</td><td className="p-1.5 text-center text-emerald-600">🟢 Good</td></tr>
+                  <tr><td className="p-1.5">Mehsana Siding Terminal</td><td className="p-1.5 text-right">98 Rakes</td><td className="p-1.5 text-right">4h 12m</td><td className="p-1.5 text-right text-amber-600 font-bold">84.1%</td><td className="p-1.5 text-center text-amber-600">🟠 Moderate</td></tr>
+                  <tr className="bg-rose-50 font-bold"><td className="p-1.5 text-rose-700">Nellore SDSTPS Siding</td><td className="p-1.5 text-right">74 Rakes</td><td className="p-1.5 text-right text-rose-600 font-bold">5h 48m</td><td className="p-1.5 text-right text-rose-600 font-bold">76.8%</td><td className="p-1.5 text-center text-rose-600">🔴 Poor / Congested</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <h3 className="text-xs md:text-sm font-bold text-slate-800 border-b border-slate-200 pb-1 mb-2">2. SIDING CONTAINER PEAK CAPACITY UTILIZATION</h3>
+              <table className="w-full text-left border border-slate-100">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                    <th className="p-1.5">Siding Code</th>
+                    <th className="p-1.5 text-right">Operating Capacity Limit</th>
+                    <th className="p-1.5 text-right">Peak Load Level</th>
+                    <th className="p-1.5">Major Queue Bottleneck Factor</th>
+                    <th className="p-1.5 text-center">Action Required</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr><td className="p-1.5 font-bold">Siding A (Tippler 1)</td><td className="p-1.5 text-right">6 Rakes/Day</td><td className="p-1.5 text-right">82%</td><td className="p-1.5">Locomotive shifting delay</td><td className="p-1.5 text-center text-slate-400">None</td></tr>
+                  <tr><td className="p-1.5 font-bold">Siding B (Tippler 2)</td><td className="p-1.5 text-right">4 Rakes/Day</td><td className="p-1.5 text-right">95%</td><td className="p-1.5">Conveyor structural belt wear</td><td className="p-1.5 text-center text-blue-600 font-semibold">Maintenance Check</td></tr>
+                  <tr className="bg-rose-50/20"><td className="p-1.5 font-bold text-rose-700">Siding C (SDSTPS Siding)</td><td className="p-1.5 text-right font-bold">3 Rakes/Day</td><td className="p-1.5 text-right font-bold text-rose-600">120%</td><td className="p-1.5 text-rose-600">Extreme hopper bottlenecks</td><td className="p-1.5 text-center text-rose-600 font-extrabold">Redirect Priority</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderReportViewerModal = () => {
+    if (!activeReportViewer) return null;
+    const { name, type } = activeReportViewer;
+
+    return (
+      <div className="fixed inset-0 z-[250] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 md:p-6 overflow-y-auto">
+        <div className="bg-slate-100 rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col h-[90vh] overflow-hidden border border-slate-200">
+          
+          {/* PDF Viewer Header Bar */}
+          <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className={`p-1.5 rounded-lg ${type === 'PDF' ? 'bg-rose-600' : 'bg-green-600'}`}>
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-left">
+                <span className="font-bold text-xs md:text-sm block tracking-wide text-slate-100">{name}</span>
+                <span className="text-[9px] text-slate-400 font-medium block">Official Dispatch Document • Generated August 12, 2026</span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.print()}
+                className="px-2.5 py-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-semibold border border-slate-800"
+                title="Print Document"
+              >
+                🖨️ Print
+              </button>
+              <button
+                onClick={() => handleDownloadReport(name)}
+                className="px-2.5 py-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-semibold border border-slate-800"
+                title="Download File"
+              >
+                <Download className="w-4 h-4" /> Download
+              </button>
+              <button
+                onClick={() => setActiveReportViewer(null)}
+                className="ml-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          {/* PDF Main Workspace */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-600/25 flex justify-center scrollbar-thin">
+            
+            {/* A4 Paper Document Page Container */}
+            <div className="bg-white shadow-xl w-full max-w-4xl p-6 md:p-12 border border-slate-200 text-slate-800 relative font-sans leading-relaxed text-xs md:text-sm select-text rounded-md">
+              
+              {/* Document Header Letterhead */}
+              <div className="text-center mb-6 border-b-4 border-double border-slate-800 pb-4">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <span className="text-xl">🏢</span>
+                  <h1 className="text-base md:text-lg font-extrabold tracking-wide uppercase text-slate-900">Ministry of Coal, Government of India</h1>
+                </div>
+                <h2 className="text-[11px] md:text-xs font-bold tracking-wider text-slate-600 uppercase">Rail-Rake Dispatch & Logistics Optimization Console</h2>
+                <p className="text-[9px] text-slate-400 font-semibold mt-0.5">SIH1319 • Central Monitoring Control Room • New Delhi</p>
+              </div>
+
+              {/* Document Metadata Block */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 text-[9px] md:text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-100 font-medium text-left">
+                <div>
+                  <span className="text-slate-400 block uppercase font-bold tracking-wider">Report Name</span>
+                  <span className="font-extrabold text-slate-800">{name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block uppercase font-bold tracking-wider">Reference Date</span>
+                  <span className="font-extrabold text-slate-800">12 August 2026</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block uppercase font-bold tracking-wider">Security Class</span>
+                  <span className="font-extrabold text-slate-800 text-emerald-600">CONFIDENTIAL</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block uppercase font-bold tracking-wider">Generated By</span>
+                  <span className="font-extrabold text-slate-800">{username || 'Admin'} / Control Room</span>
+                </div>
+              </div>
+
+              {/* Dynamic Content Switching */}
+              {renderReportContent(name)}
+
+              {/* Document Sign-Off Footer */}
+              <div className="mt-8 pt-6 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-[9px] md:text-[10px]">
+                <div className="space-y-3">
+                  <div className="h-8 border-b border-dashed border-slate-200 flex items-end justify-center">
+                    <span className="font-mono text-slate-400 text-[9px]">E-SIGNED SECURELY</span>
+                  </div>
+                  <span className="font-bold text-slate-600 block">Operations Director</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-8 border-b border-dashed border-slate-200 flex items-end justify-center">
+                    <span className="font-mono text-slate-400 text-[9px]">E-SIGNED SECURELY</span>
+                  </div>
+                  <span className="font-bold text-slate-600 block">Safety & Compliance Head</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-8 border-b border-dashed border-slate-200 flex items-end justify-center">
+                    <span className="font-mono text-slate-400 text-[9px] bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">VERIFIED TLS</span>
+                  </div>
+                  <span className="font-bold text-slate-600 block">Terminal Head</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -3545,6 +3992,9 @@ export default function App() {
           </div>
         </div>
       )}
+      
+      {/* Dynamic PDF Report Viewer Modal */}
+      {activeReportViewer && renderReportViewerModal()}
     </div>
   );
 }
