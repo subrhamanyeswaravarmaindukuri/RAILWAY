@@ -326,6 +326,9 @@ export default function App() {
   const [customRouteTo, setCustomRouteTo] = useState<string>('Telangana');
   const [useCustomRoute, setUseCustomRoute] = useState<boolean>(false);
 
+  // Map Layer States
+  const [activeMapLayer, setActiveMapLayer] = useState<'standard' | 'satellite' | 'terrain' | 'railway'>('standard');
+
   // Layout preview states
   const [isRealMobile, setIsRealMobile] = useState(false);
   const isMobile = isRealMobile;
@@ -426,6 +429,8 @@ export default function App() {
   // Refs for Leaflet Map
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const overlayLayerRef = useRef<L.TileLayer | null>(null);
   const trainMarkerRef = useRef<L.Marker | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
@@ -444,6 +449,14 @@ export default function App() {
         if (routeOverlayPolylineRef.current) {
           routeOverlayPolylineRef.current.remove();
           routeOverlayPolylineRef.current = null;
+        }
+        if (tileLayerRef.current) {
+          tileLayerRef.current.remove();
+          tileLayerRef.current = null;
+        }
+        if (overlayLayerRef.current) {
+          overlayLayerRef.current.remove();
+          overlayLayerRef.current = null;
         }
         stationMarkersRef.current = [];
       }
@@ -477,14 +490,46 @@ export default function App() {
         attributionControl: false
       }).setView(trainPos, 6);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18
-      }).addTo(map);
-
       mapInstanceRef.current = map;
     }
 
     const map = mapInstanceRef.current;
+
+    // Handle dynamic map tiles swapping in real-time
+    if (tileLayerRef.current) {
+      tileLayerRef.current.remove();
+      tileLayerRef.current = null;
+    }
+    if (overlayLayerRef.current) {
+      overlayLayerRef.current.remove();
+      overlayLayerRef.current = null;
+    }
+
+    let url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let options: L.TileLayerOptions = { maxZoom: 18 };
+
+    if (activeMapLayer === 'satellite') {
+      url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      options = {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri'
+      };
+    } else if (activeMapLayer === 'terrain') {
+      url = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+      options = {
+        maxZoom: 17,
+        attribution: 'Map &copy; OpenTopoMap'
+      };
+    }
+
+    tileLayerRef.current = L.tileLayer(url, options).addTo(map);
+
+    if (activeMapLayer === 'railway') {
+      overlayLayerRef.current = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: 'Map &copy; OpenRailwayMap'
+      }).addTo(map);
+    }
 
     // Remove old markers
     stationMarkersRef.current.forEach((m) => m.remove());
@@ -610,7 +655,7 @@ export default function App() {
       animate: true,
       duration: 1.2
     });
-  }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress, useCustomRoute, customRouteFrom, customRouteTo]);
+  }, [currentScreen, selectedRakeId, rakes, userLocation, userAddress, useCustomRoute, customRouteFrom, customRouteTo, activeMapLayer]);
 
   // Back navigation helper
   const navigateTo = (screen: string) => {
@@ -1266,6 +1311,75 @@ export default function App() {
           <div className="relative w-full rounded-xl overflow-hidden border border-slate-100 shadow-sm" style={{ zIndex: 10 }}>
             {/* The Map Div */}
             <div ref={mapContainerRef} className="h-96 w-full bg-slate-50 relative" />
+
+            {/* Map Layers Selector Overlay - Google Maps style */}
+            <div className="absolute bottom-4 left-4 z-[1000] flex items-end gap-2">
+              <div className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-xl p-2 flex items-center gap-2 transition-all animate-fade-in">
+                <button
+                  onClick={() => setActiveMapLayer('standard')}
+                  className={`flex flex-col items-center gap-1 p-1 rounded-xl transition-all cursor-pointer ${
+                    activeMapLayer === 'standard'
+                      ? 'bg-blue-50 border-2 border-blue-500 font-bold text-blue-700'
+                      : 'border-2 border-transparent hover:bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                  <span className="text-[8px] uppercase tracking-wider font-semibold">Standard</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveMapLayer('satellite')}
+                  className={`flex flex-col items-center gap-1 p-1 rounded-xl transition-all cursor-pointer ${
+                    activeMapLayer === 'satellite'
+                      ? 'bg-blue-50 border-2 border-blue-500 font-bold text-blue-700'
+                      : 'border-2 border-transparent hover:bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h2m-4-3h1.5a2.5 2.5 0 012.5 2.5V12m-9-3h7.17M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-[8px] uppercase tracking-wider font-semibold">Satellite</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveMapLayer('terrain')}
+                  className={`flex flex-col items-center gap-1 p-1 rounded-xl transition-all cursor-pointer ${
+                    activeMapLayer === 'terrain'
+                      ? 'bg-blue-50 border-2 border-blue-500 font-bold text-blue-700'
+                      : 'border-2 border-transparent hover:bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <svg className="w-6 h-6 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.782 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <span className="text-[8px] uppercase tracking-wider font-semibold">Terrain</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveMapLayer('railway')}
+                  className={`flex flex-col items-center gap-1 p-1 rounded-xl transition-all cursor-pointer ${
+                    activeMapLayer === 'railway'
+                      ? 'bg-blue-50 border-2 border-blue-500 font-bold text-blue-700'
+                      : 'border-2 border-transparent hover:bg-slate-50 text-slate-500'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                    <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                    </svg>
+                  </div>
+                  <span className="text-[8px] uppercase tracking-wider font-semibold">Railways</span>
+                </button>
+              </div>
+            </div>
 
             {/* Map Telemetry Overlay card */}
             <div className="absolute top-4 right-4 z-[1000] p-4 bg-white/90 backdrop-blur-md border border-slate-100 rounded-xl shadow-lg w-52 leading-tight space-y-2 text-xs">
